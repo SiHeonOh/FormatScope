@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# training artifacts
+models/checkpoints/
+logs/
+data/
+
+# EDA outputs
+synth/out/
+sta/out/
+sim_build/
+*.vcd
+*.fst
+results_*.xml
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/
