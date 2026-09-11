@@ -1,6 +1,6 @@
 # FormatScope Build Plan
 
-**Purdue Chips & AI Hackathon, build window Sep 7–19, 2026. This plan starts Wed Sep 10 and ends with the video submitted on Fri Sep 19.**
+**Purdue Chips & AI Hackathon, build window Sep 7–19, 2026. This plan starts Thu Sep 10 and ends with the video submitted on Sat Sep 19.**
 
 Team Hidden Bit: Si Heon Oh (RTL + cocotb), Seungmin Nam (quantization + training), Rakshita Gupta (synthesis, OpenSTA, the `formatscope` tool, and the GPU machines). Claude drafts code in all three lanes; the lane owner reviews, runs, and commits it.
 
@@ -643,22 +643,22 @@ Prepared answers for: why a fused stage with a single rounding; why an FP32-form
 
 ---
 
-## 10. Day-by-day calendar (Wed Sep 10 → Fri Sep 19)
+## 10. Day-by-day calendar (Thu Sep 10 → Sat Sep 19)
 
 SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits). Gates are checked at the next morning's sync.
 
 | Day | SH (RTL + cocotb) | SN (quant + training) | RG (synth, STA, tool, GPUs) | End-of-day deliverable | Gate |
 |-----|-------------------|------------------------|-----------------------------|------------------------|------|
-| **Wed Sep 10** | Suite + cocotb hello (§3.7b); repo skeleton and Makefile with CL | Venv; review CL's `formats.py` + `resnet8.py` + `train.py`; 1-epoch CPU sanity (§3.7c) | Repo init + push; ciel sky130; adder area (§3.7a); OpenSTA spike (§3.4, §3.7d); launch the 60-epoch FP32 run overnight | Four smoke tests pass; `versions.lock` | **G0** |
-| **Thu Sep 11** | `adder_tree.v`, `dp32_int8.v`; `refs.py` INT; `test_decode` INT8; `test_dp32_int` green for INT8 | `formats.py` tests green; `fakequant.py` with BN folding; `calibrate.py`; INT8 PTQ row | INT8 flat synth → `area.csv`; INT8 OpenSTA → `timing.csv`; `run_synth.py` + `run_sta.py` parsers; CI green | First complete point: INT8 accuracy + area + delay | **G1: INT8 end to end** |
-| **Fri Sep 12** | `dp32_int4` green; `docs/fused-stage.md` + `refs.py` FP8 reference (with CL); FP8/E2M1/E8M0 decoders + exhaustive tests | PTQ rows for INT4, FP8, MXINT8, MXFP4, INT4-b32; sanity-bound check; broken-quantizer check | INT4 synth + STA; determinism check (3× INT8); hier template; `data.py` + `pareto.py` drafts | All six PTQ rows; INT4/INT8 verified and measured | **G2: INT4/INT8 verified, PTQ complete** |
-| **Sat Sep 13** | `fused_stage.v` + `dp32_fp8e4m3.v`; directed corners passing; random vectors in progress | `qat.py`; RG launches QAT for INT4 and INT8 overnight; `fidelity.py` drafted | Choose T1/T2 from unconstrained STA (§7.2); rerun INT4/INT8 at T1/T2; `formatscope plot` v0 | Delay targets fixed; first frontier with two points at three targets | — |
-| **Sun Sep 14** | FP8 10k vectors green for `ALIGN_W` 24 and 32 (buffer day for the fused stage) | QAT FP8 launched; fidelity rows for INT8 (exact) and FP8 | FP8 synth at three targets; breakdown run for INT8 and FP8; `recommend` | FP8 verified + measured at matched delay | **G3: FLOOR REACHED** (INT4/INT8/FP8 at two matched targets + PTQ ×5) |
-| **Mon Sep 15** | `dp32_mxint8.v` green; start `dp32_mxfp4.v` | QAT MXINT8 + MXFP4 launched; fidelity MXINT8 | MXINT8 synth + STA; window-sweep runs (FP8 at 32) | Four formats verified and measured | **G4** |
-| **Tue Sep 16** | `dp32_mxfp4.v` green; full `make test` green; tag `rtl-v1` | Fidelity MXFP4; QAT INT4-b32; `docs/results.md` numbers for H1/H2 | MXFP4 synth + STA; MXINT8 and MXFP4 at both window settings; full five-format frontier at three targets; breakdown for all; perturbation runs | Complete sky130 results set, all figures | **G5: full sky130 scope** |
-| **Wed Sep 17** | Lint, waveform-free clean run, README RTL section, Q&A answers for the RTL questions | Results table PNG; accuracy write-up; Q&A for quantization questions | ASAP7 rerun (§7.6, H3) and its frontier figure; `make freeze` into `results/`; README results section | README draft complete; H3 answered | **G6: full proposal scope** |
-| **Thu Sep 18** | Fresh-clone reproduction on Mac; record the test-suite shot | Fresh-clone reproduction on Windows; record the chart/findings shots | Record `formatscope demo` shot; edit video v1 | Video v1; reproduction verified | — |
-| **Fri Sep 19** | Final review of the repo as a stranger | Final review of the README numbers vs CSVs | Tag `v1.0`; flip public; upload video; submit before noon | **Submitted** | **Submit by noon** |
+| **Thu Sep 10** | Suite + cocotb hello (§3.7b); repo skeleton and Makefile with CL | Venv; review CL's `formats.py` + `resnet8.py` + `train.py`; 1-epoch CPU sanity (§3.7c) | Repo init + push; ciel sky130; adder area (§3.7a); OpenSTA spike (§3.4, §3.7d); launch the 60-epoch FP32 run overnight | Four smoke tests pass; `versions.lock` | **G0** |
+| **Fri Sep 11** | `adder_tree.v`, `dp32_int8.v`; `refs.py` INT; `test_decode` INT8; `test_dp32_int` green for INT8 | `formats.py` tests green; `fakequant.py` with BN folding; `calibrate.py`; INT8 PTQ row | INT8 flat synth → `area.csv`; INT8 OpenSTA → `timing.csv`; `run_synth.py` + `run_sta.py` parsers; CI green | First complete point: INT8 accuracy + area + delay | **G1: INT8 end to end** |
+| **Sat Sep 12** | `dp32_int4` green; `docs/fused-stage.md` + `refs.py` FP8 reference (with CL); FP8/E2M1/E8M0 decoders + exhaustive tests | PTQ rows for INT4, FP8, MXINT8, MXFP4, INT4-b32; sanity-bound check; broken-quantizer check | INT4 synth + STA; determinism check (3× INT8); hier template; `data.py` + `pareto.py` drafts | All six PTQ rows; INT4/INT8 verified and measured | **G2: INT4/INT8 verified, PTQ complete** |
+| **Sun Sep 13** | `fused_stage.v` + `dp32_fp8e4m3.v`; directed corners passing; random vectors in progress | `qat.py`; RG launches QAT for INT4 and INT8 overnight; `fidelity.py` drafted | Choose T1/T2 from unconstrained STA (§7.2); rerun INT4/INT8 at T1/T2; `formatscope plot` v0 | Delay targets fixed; first frontier with two points at three targets | — |
+| **Mon Sep 14** | FP8 10k vectors green for `ALIGN_W` 24 and 32 (buffer day for the fused stage) | QAT FP8 launched; fidelity rows for INT8 (exact) and FP8 | FP8 synth at three targets; breakdown run for INT8 and FP8; `recommend` | FP8 verified + measured at matched delay | **G3: FLOOR REACHED** (INT4/INT8/FP8 at two matched targets + PTQ ×5) |
+| **Tue Sep 15** | `dp32_mxint8.v` green; start `dp32_mxfp4.v` | QAT MXINT8 + MXFP4 launched; fidelity MXINT8 | MXINT8 synth + STA; window-sweep runs (FP8 at 32) | Four formats verified and measured | **G4** |
+| **Wed Sep 16** | `dp32_mxfp4.v` green; full `make test` green; tag `rtl-v1` | Fidelity MXFP4; QAT INT4-b32; `docs/results.md` numbers for H1/H2 | MXFP4 synth + STA; MXINT8 and MXFP4 at both window settings; full five-format frontier at three targets; breakdown for all; perturbation runs | Complete sky130 results set, all figures | **G5: full sky130 scope** |
+| **Thu Sep 17** | Lint, waveform-free clean run, README RTL section, Q&A answers for the RTL questions | Results table PNG; accuracy write-up; Q&A for quantization questions | ASAP7 rerun (§7.6, H3) and its frontier figure; `make freeze` into `results/`; README results section | README draft complete; H3 answered | **G6: full proposal scope** |
+| **Fri Sep 18** | Fresh-clone reproduction on Mac; record the test-suite shot | Fresh-clone reproduction on Windows; record the chart/findings shots | Record `formatscope demo` shot; edit video v1 | Video v1; reproduction verified | — |
+| **Sat Sep 19** | Final review of the repo as a stranger | Final review of the README numbers vs CSVs | Tag `v1.0`; flip public; upload video; submit before noon | **Submitted** | **Submit by noon** |
 
 **Fallbacks (used only if a gate slips; the plan above is the deliverable).** G1 misses → the pipeline register or parser is the blocker; fix that before touching any other format. G2 misses → INT-only still tells H1's core story via the INT4↔INT8 spread. G3 misses (fused stage not bit-exact by Sep 14) → keep working it through Sep 15 while RG synthesizes the current FP8 RTL and reports its area with an explicit "not yet bit-exact" label; MX starts Sep 16. G5 misses → cut in the proposal's order: ASAP7 first, then the third delay target, then QAT on the MX formats. The fine-tuning pass on INT/FP8 is protected because H2 needs it.
 
