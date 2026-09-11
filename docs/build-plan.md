@@ -16,7 +16,7 @@ Rules the whole team agreed on:
 2. **No RTL merges to `main` without its cocotb test green.** No exceptions, including the last night.
 3. **Results are committed, code is reproducible.** Every number in the README regenerates from `make` targets. CSVs in `results/` are committed; netlists, checkpoints, and simulator builds are not.
 4. **Owners commit their own lane.** Claude writes first drafts on a branch; the owner reads every line, runs it, and commits under their own name. Commit messages are plain imperative sentences with no AI attribution of any kind.
-5. **The floor ships no matter what.** INT4, INT8, and FP8 verified end to end at two matched delay targets, with post-training-quantization accuracy for all five formats. Everything past that is gated stretch, cut in the proposal's order: ASAP7 rerun first, then the third delay target, then the fine-tuning pass on the MX formats.
+5. **The deliverable is the full proposal scope.** Five verified DP32 units with sky130 netlists and area/timing reports at three delay targets and two alignment-window settings; six quantized configurations each measured after PTQ and after QAT; the stage breakdown; the fidelity check; the ASAP7 rerun for H3; the tool, the plots, and the video. The floor is a contingency, not a target: if the schedule slips we cut in the proposal's own order (ASAP7 rerun first, then the third delay target, then the fine-tuning pass on the MX formats), and we never fall below INT4, INT8, and FP8 verified end to end at two matched delay targets with PTQ accuracy for all five formats.
 6. **Daily 15-minute sync** at a fixed time. Each owner says: done yesterday, doing today, blocked on. Rakshita's hours are limited, so her lane is drafted to be run, not written, by her.
 
 ---
@@ -32,7 +32,7 @@ Choosing a number format for an AI accelerator trades model accuracy against sil
 | # | Deliverable | Lane | Rubric line it serves |
 |---|-------------|------|-----------------------|
 | D1 | Public repository with the `formatscope` tool and one-command regeneration | Tool (Rakshita) | Implementation quality 20% |
-| D2 | Five verified DP32 designs: RTL, sky130 netlists, area and timing reports at each delay target | RTL (Si Heon), Synth (Rakshita) | Technical merit 30%, Results 20% |
+| D2 | Five verified DP32 designs: RTL, sky130 netlists, area and timing reports at each delay target, committed under `results/netlists/` and `results/reports/` at the `v1.0` tag | RTL (Si Heon), Synth (Rakshita) | Technical merit 30%, Results 20% |
 | D3 | Six quantized ResNet-8 configurations with measured accuracy, after PTQ and after a 5-epoch QAT | Quant (Seungmin) | Results 20%, Relevance 20% |
 | D4 | Accuracy-vs-area plots at each delay target, plus the per-stage area breakdown | Tool (Rakshita) | Results 20% |
 | D5 | 3–5 minute demo video: live synthesis, passing test suite, the frontier | Everyone | Video clarity 10% |
@@ -163,7 +163,9 @@ FormatScope/
 │   └── plots.py                 # matplotlib only; PNG + SVG
 ├── results/                     # COMMITTED
 │   ├── accuracy.csv  area.csv  timing.csv  breakdown.csv  fidelity.csv
-│   └── figures/                 # frontier_<lib>_<target>.png/svg, breakdown.png, results_table.png
+│   ├── figures/                 # frontier_<lib>_<target>.png/svg, breakdown.png, results_table.png
+│   ├── netlists/                # final sky130 (and ASAP7) netlists per unit × target × window, copied by `make freeze`
+│   └── reports/                 # the matching yosys stat and OpenSTA report_checks outputs
 └── video/
     ├── script.md                # shot list with timings (§9.3)
     └── qa.md                    # showcase Q&A answers (§9.5)
@@ -177,7 +179,7 @@ FormatScope/
 - Verilog-2005 only (Yosys reads it natively). Flatten 2-D ports into 1-D vectors (`a_flat[32*W-1:0]`). No latches: every `always @*` assigns every output on every path. Wrap signed operands in `$signed()`. Register all outputs. Build trees with `generate`.
 - Python 3.11, `numpy`, `torch`, `torchvision`, `cocotb~=2.0`, `pytest`, `matplotlib`, `pandas`. Pin with `pip freeze > versions.lock` on Day 0.
 - Branch names: `sh/<topic>`, `sn/<topic>`, `rg/<topic>`. Pull requests into `main`; the CI must be green; one other person skims RTL PRs.
-- Makefile targets, thin so judges reproduce trivially: `make env`, `make train`, `make quant`, `make test`, `make synth`, `make sta`, `make plot`, `make demo`.
+- Makefile targets, thin so judges reproduce trivially: `make env`, `make train`, `make quant`, `make test`, `make synth`, `make sta`, `make plot`, `make demo`, and `make freeze` (copies the final netlists and reports from the gitignored working directories into `results/` for commit).
 
 ---
 
@@ -347,9 +349,9 @@ Expected PTQ top-1 relative to FP32 (sanity bounds, not targets):
 
 ### 4.6 `quant/qat.py` — five-epoch quantization-aware fine-tune (Day 3–6)
 
-**Do.** Start from `fp32.pt`, wrap with STE quantizers, keep BN folded and frozen, SGD momentum 0.9, learning rate 0.01 cosine-annealed to 0 over 5 epochs, batch 128, same augmentation, seed 0 (decision D12). One run per configuration (≈ 2 min each on the 4070 Ti). Append rows with `stage=qat`. Priority order if time is short: INT4, MXFP4, INT8, FP8, MXINT8, INT4-b32 (the ones with the most to recover first).
+**Do.** Start from `fp32.pt`, wrap with STE quantizers, keep BN folded and frozen, SGD momentum 0.9, learning rate 0.01 cosine-annealed to 0 over 5 epochs, batch 128, same augmentation, seed 0 (decision D12). One run per configuration, all six (≈ 2 min each on the 4070 Ti, so one `make qat` covers them). Append rows with `stage=qat`. Run order, so the most informative rows land first: INT4, MXFP4, INT8, FP8, MXINT8, INT4-b32.
 
-**Done when** `qat` rows exist for at least INT4, INT8, FP8, and the MX formats show whether MXFP4 closes most of its gap to INT8 (H2).
+**Done when** `qat` rows exist for all six configurations, and the MX rows show whether MXFP4 closes most of its gap to INT8 (H2).
 
 ### 4.7 `quant/fidelity.py` — PyTorch path vs DP32 path on real data (Day 4–6)
 
@@ -549,9 +551,9 @@ The proposal promises the spread across "seeds". Yosys's ABC pass has no seed sw
 
 Same script without `-flatten`, and with `stat -liberty {LIB}` run after `abc` so it reports each module's area separately (`mul_stage`, `align_stage`, `tree_stage`, `normacc_stage`, and the decoders). `run_synth.py --hier` writes `results/breakdown.csv` with one row per (format, stage). Hierarchical synthesis loses cross-boundary optimization, so the breakdown total will not equal the flat area; report both and say why.
 
-### 7.6 ASAP7 rerun (H3, Day 8 only if all gates are green)
+### 7.6 ASAP7 rerun (H3, scheduled Sep 17)
 
-Add the ASAP7 liberty path(s) to `synth/libs.toml`, run the same templates with `LIB_ID=asap7`, rescale `-D` targets after an unconstrained ASAP7 pass, and time with OpenSTA. The deliverable is one extra frontier figure and one sentence: does the ranking hold?
+In scope, scheduled, and the first thing the proposal names to cut only if the schedule has slipped. Add the ASAP7 liberty path(s) to `synth/libs.toml`, run the same templates with `LIB_ID=asap7`, rescale `-D` targets after an unconstrained ASAP7 pass, and time with OpenSTA. The deliverable is the ASAP7 netlists and reports, one extra frontier figure, and one sentence: does the ranking hold?
 
 ### 7.7 Sanity checks that gate every result row
 
@@ -633,7 +635,7 @@ Narration split: decision D18 (recommended: each owner narrates their own lane's
 - [ ] Repository flipped to **public**; README renders; CI badge green
 - [ ] Video uploaded (unlisted link or file per the organizers' form) and the link tested in a private window
 - [ ] Submission form completed with the video and repo links
-- [ ] Netlists and timing reports for each delay target attached as a GitHub release asset (they are gitignored)
+- [ ] `make freeze` run from the tag: final netlists and yosys/OpenSTA reports for every unit, delay target, window setting, and library committed under `results/netlists/` and `results/reports/`
 
 ### 9.5 Showcase Q&A (Sep 22, `video/qa.md`)
 
@@ -653,12 +655,12 @@ SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits).
 | **Sat Sep 13** | `fused_stage.v` + `dp32_fp8e4m3.v`; directed corners passing; random vectors in progress | `qat.py`; RG launches QAT for INT4 and INT8 overnight; `fidelity.py` drafted | Choose T1/T2 from unconstrained STA (§7.2); rerun INT4/INT8 at T1/T2; `formatscope plot` v0 | Delay targets fixed; first frontier with two points at three targets | — |
 | **Sun Sep 14** | FP8 10k vectors green for `ALIGN_W` 24 and 32 (buffer day for the fused stage) | QAT FP8 launched; fidelity rows for INT8 (exact) and FP8 | FP8 synth at three targets; breakdown run for INT8 and FP8; `recommend` | FP8 verified + measured at matched delay | **G3: FLOOR REACHED** (INT4/INT8/FP8 at two matched targets + PTQ ×5) |
 | **Mon Sep 15** | `dp32_mxint8.v` green; start `dp32_mxfp4.v` | QAT MXINT8 + MXFP4 launched; fidelity MXINT8 | MXINT8 synth + STA; window-sweep runs (FP8 at 32) | Four formats verified and measured | **G4** |
-| **Tue Sep 16** | `dp32_mxfp4.v` green; full `make test` green; tag `rtl-v1` | Fidelity MXFP4; QAT INT4-b32 if time; `docs/results.md` numbers for H1/H2 | MXFP4 synth + STA; full five-format frontier at three targets; breakdown for all; perturbation runs | Complete results set, all figures | **G5: full proposal scope minus ASAP7** |
-| **Wed Sep 17** | Lint, waveform-free clean run, README RTL section, Q&A answers for the RTL questions | Results table PNG; accuracy write-up; Q&A for quantization questions | ASAP7 rerun if G5 held (else drop, per cut order); README results section; final figures | README draft complete; ASAP7 decided | — |
+| **Tue Sep 16** | `dp32_mxfp4.v` green; full `make test` green; tag `rtl-v1` | Fidelity MXFP4; QAT INT4-b32; `docs/results.md` numbers for H1/H2 | MXFP4 synth + STA; MXINT8 and MXFP4 at both window settings; full five-format frontier at three targets; breakdown for all; perturbation runs | Complete sky130 results set, all figures | **G5: full sky130 scope** |
+| **Wed Sep 17** | Lint, waveform-free clean run, README RTL section, Q&A answers for the RTL questions | Results table PNG; accuracy write-up; Q&A for quantization questions | ASAP7 rerun (§7.6, H3) and its frontier figure; `make freeze` into `results/`; README results section | README draft complete; H3 answered | **G6: full proposal scope** |
 | **Thu Sep 18** | Fresh-clone reproduction on Mac; record the test-suite shot | Fresh-clone reproduction on Windows; record the chart/findings shots | Record `formatscope demo` shot; edit video v1 | Video v1; reproduction verified | — |
 | **Fri Sep 19** | Final review of the repo as a stranger | Final review of the README numbers vs CSVs | Tag `v1.0`; flip public; upload video; submit before noon | **Submitted** | **Submit by noon** |
 
-**Fallbacks.** G1 misses → the pipeline register or parser is the blocker; fix that before touching any other format. G2 misses → INT-only still tells H1's core story via the INT4↔INT8 spread. G3 misses (fused stage not bit-exact by Sep 14) → keep working it through Sep 15 while RG synthesizes the current FP8 RTL and reports its area with an explicit "not yet bit-exact" label; MX starts Sep 16. G5 misses → drop ASAP7 and the third delay target, in that order, then QAT on MX. The fine-tuning pass on INT/FP8 is protected because H2 needs it.
+**Fallbacks (used only if a gate slips; the plan above is the deliverable).** G1 misses → the pipeline register or parser is the blocker; fix that before touching any other format. G2 misses → INT-only still tells H1's core story via the INT4↔INT8 spread. G3 misses (fused stage not bit-exact by Sep 14) → keep working it through Sep 15 while RG synthesizes the current FP8 RTL and reports its area with an explicit "not yet bit-exact" label; MX starts Sep 16. G5 misses → cut in the proposal's order: ASAP7 first, then the third delay target, then QAT on the MX formats. The fine-tuning pass on INT/FP8 is protected because H2 needs it.
 
 ---
 
@@ -707,7 +709,7 @@ SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits).
 | D17 | Default recommend margin | 1.0 point of top-1 below FP32 |
 | D18 | Video narration | each owner narrates their lane's shot |
 | D19 | When to flip the repo public | morning of Sep 19, or Sep 18 evening if clean |
-| D20 | QAT for `int4_b32` | only if every other QAT row exists |
+| D20 | QAT for `int4_b32` | in scope, runs with the other five (last in the run order) |
 
 ---
 
