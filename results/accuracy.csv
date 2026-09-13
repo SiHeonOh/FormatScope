@@ -1,0 +1,8 @@
+format,stage,top1,top5,calib_images,calib_stat,quantize_first_last,epochs,seed,checkpoint,date
+fp32,none,86.3400,99.4600,,,,60,0,models/checkpoints/fp32.pt,2026-09-12
+int4,ptq,61.6500,96.2000,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
+int8,ptq,86.3900,99.4400,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
+fp8e4m3,ptq,85.5000,99.4400,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
+mxint8,ptq,86.3900,99.4600,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
+mxfp4,ptq,60.7100,97.3700,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
+int4_b32,ptq,78.4600,98.5100,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
