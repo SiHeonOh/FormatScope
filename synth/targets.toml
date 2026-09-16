@@ -1,0 +1,12 @@
+# Shared delay targets (build-plan.md S7.2, decision D7).
+# T1 = slowest unconstrained unit rounded up to the next 100 ps; T2 ~= 0.7 x T1.
+# Set once from the unconstrained OpenSTA numbers, then never change without
+# re-running every synthesis. Values are picoseconds.
+
+[sky130hd]
+# t1_ps = 0
+# t2_ps = 0
+
+[asap7]
+# t1_ps = 0
+# t2_ps = 0

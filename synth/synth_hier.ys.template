@@ -1,0 +1,12 @@
+# Hierarchical synthesis for the per-stage area breakdown (build-plan.md S7.5).
+# Same as synth_flat.ys.template without -flatten, so stat reports each stage module.
+read_liberty -lib {LIB}
+read_verilog -sv {SOURCES}
+{CHPARAM}
+hierarchy -check -top {TOP}
+synth -top {TOP}
+dfflibmap -liberty {LIB}
+abc -liberty {LIB} {DTARGET}
+opt_clean
+tee -o {OUT}_stat.txt stat -liberty {LIB}
+tee -q -o {OUT}_stat.json stat -json -liberty {LIB}
