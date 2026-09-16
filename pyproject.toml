@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "formatscope"
+version = "0.1.0"
+description = "Accuracy, area, and delay of INT4, INT8, FP8-E4M3, MXINT8, and MXFP4 dot-product units on sky130"
+requires-python = ">=3.11"
+dependencies = ["numpy", "matplotlib"]
+
+[project.optional-dependencies]
+train = ["torch", "torchvision"]
+test = ["pytest", "cocotb~=2.0"]
+
+[project.scripts]
+formatscope = "formatscope.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["tool"]
+
+[tool.pytest.ini_options]
+pythonpath = ["tool", "."]
+markers = ["slow: full 10,000-vector DP32 runs, skipped in CI"]

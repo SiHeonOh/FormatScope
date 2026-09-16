@@ -1,6 +1,6 @@
 # FormatScope Build Plan
 
-**Purdue Chips & AI Hackathon, build window Sep 7–19, 2026. This plan starts Thu Sep 10 and ends with the video submitted on Sat Sep 19.**
+**Purdue Chips & AI Hackathon, build window Sep 7–19, 2026. This plan started Thu Sep 10, was re-planned on Tue Sep 15 (Section 10), and ends with the video submitted on Sat Sep 19.**
 
 Team Hidden Bit: Si Heon Oh (RTL + cocotb), Seungmin Nam (quantization + training), Rakshita Gupta (synthesis, OpenSTA, the `formatscope` tool, and the GPU machines). Claude drafts code in all three lanes; the lane owner reviews, runs, and commits it.
 
@@ -247,7 +247,7 @@ Pick the first that produces a `report_checks` on the smoke-test adder (§3.7 d)
 
 **Done when** `sta` opens, `read_liberty` of the sky130 file succeeds, and `report_checks` on the adder netlist prints a `Startpoint … Endpoint … slack (MET|VIOLATED)` block. Record the route and commit in `versions.lock`.
 
-### 3.5 ASAP7 (H3 only; set up on Sep 17 if H3 is still in scope)
+### 3.5 ASAP7 (H3 only; set up Thu Sep 17 night, rerun Fri Sep 18)
 
 ASAP7 is BSD-3 licensed and public at `https://github.com/The-OpenROAD-Project/asap7`. The 7.5-track library lives under `asap7sc7p5t_28/LIB/NLDM/`, split into cell groups (AO, INVBUF, OA, SEQ, SIMPLE) and compressed; the flow needs all groups' TT RVT libs read together. An alternative is the merged library shipped under OpenROAD-flow-scripts `flow/platforms/asap7/lib/`. Which one to use is decided on Sep 17 by whoever runs it, and recorded in `versions.lock`. Delay targets must be rescaled for a 7 nm library (their unconstrained critical paths will be several times shorter than sky130).
 
@@ -521,9 +521,9 @@ write_verilog -noattr synth/out/{LIB_ID}_{FMT}_{TARGET}_a{ALIGN_W}_r{RUN}_netlis
 
 **Done when** `make synth FMT=int8` produces an `area.csv` row with a positive area and a netlist file (Day 1), and `make synth` runs all five (Day 6).
 
-### 7.2 Choosing the two shared delay targets (Day 3, needs INT4/INT8/FP8 unconstrained numbers)
+### 7.2 Choosing the two shared delay targets (Thu Sep 17, needs INT4/INT8/FP8 unconstrained numbers)
 
-**Do.** Run every available unit unconstrained, time each with OpenSTA (§7.3), and record the critical-path delay. Then set (decision D7, confirm at the Sep 13 sync): `T1` = the slowest unit's unconstrained delay rounded up to the next 100 ps (every unit can meet it), and `T2` = roughly 0.7 × T1 (a target that forces ABC to spend area for speed). Both targets are shared by all units, written once into `synth/targets.toml`, and never changed after Sep 14 without re-running everything. Units that miss `T2` are still reported, with their achieved delay, and the README says so.
+**Do.** Run every available unit unconstrained, time each with OpenSTA (§7.3), and record the critical-path delay. Then set (decision D7, fixed by Thu Sep 17 14:00 in the revised calendar): `T1` = the slowest unit's unconstrained delay rounded up to the next 100 ps (every unit can meet it), and `T2` = roughly 0.7 × T1 (a target that forces ABC to spend area for speed). Both targets are shared by all units, written once into `synth/targets.toml`, and never changed after that without re-running everything. Units that miss `T2` are still reported, with their achieved delay, and the README says so.
 
 ### 7.3 OpenSTA timing (`sta/sta.tcl.template`, `sta/run_sta.py`)
 
@@ -551,7 +551,7 @@ The proposal promises the spread across "seeds". Yosys's ABC pass has no seed sw
 
 Same script without `-flatten`, and with `stat -liberty {LIB}` run after `abc` so it reports each module's area separately (`mul_stage`, `align_stage`, `tree_stage`, `normacc_stage`, and the decoders). `run_synth.py --hier` writes `results/breakdown.csv` with one row per (format, stage). Hierarchical synthesis loses cross-boundary optimization, so the breakdown total will not equal the flat area; report both and say why.
 
-### 7.6 ASAP7 rerun (H3, scheduled Sep 17)
+### 7.6 ASAP7 rerun (H3, scheduled Fri Sep 18)
 
 In scope, scheduled, and the first thing the proposal names to cut only if the schedule has slipped. Add the ASAP7 liberty path(s) to `synth/libs.toml`, run the same templates with `LIB_ID=asap7`, rescale `-D` targets after an unconstrained ASAP7 pass, and time with OpenSTA. The deliverable is the ASAP7 netlists and reports, one extra frontier figure, and one sentence: does the ranking hold?
 
@@ -643,24 +643,47 @@ Prepared answers for: why a fused stage with a single rounding; why an FP32-form
 
 ---
 
-## 10. Day-by-day calendar (Thu Sep 10 → Sat Sep 19)
+## 10. Day-by-day calendar (revised Tue Sep 15 → Sat Sep 19)
 
-SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits). Gates are checked at the next morning's sync.
+SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits). Gates are checked at the next morning's sync. The original Sep 10 calendar is in git history (`500636f`); "Day N" references in the lane sections point at that calendar, and this table supersedes them.
+
+### 10.1 Where we are (Tue Sep 15, evening)
+
+The team kept the **full proposal scope** at the Sep 15 re-plan. Quantization is two days ahead of hardware, and the whole hardware side (RTL, verification, synthesis, timing) is four days behind.
+
+| Item | Planned by | Status |
+|------|-----------|--------|
+| FP32 baseline | Thu Sep 10 | **Done**: 86.34% top-1 (PR #1, merged Sep 12) |
+| `formats.py`, decode tables, `fakequant.py`, `calibrate.py`, tests | Fri Sep 11 | **Done** (PR #1) |
+| PTQ rows for all six configurations | Sat Sep 12 | **Done**: INT8 86.39, FP8 85.50, MXINT8 86.39, INT4 61.65, MXFP4 60.71, INT4-b32 78.46 |
+| Smoke tests and `versions.lock` (G0) | Thu Sep 10 | Not started. RG's half is scripted in `scripts/setup_lane_s_wsl.sh` |
+| Makefile, `pyproject.toml`, CI | Thu Sep 10 | Drafted on `rg/synth-sta-tool` |
+| `run_synth.py`, `run_sta.py`, templates, parsers | Fri Sep 11 | Drafted on `rg/synth-sta-tool`, unit-tested on fixtures, **never run against real Yosys or OpenSTA** |
+| `formatscope` tool (`plot`, `recommend`, `table`, `demo`, `run`) | Sat Sep 12 → Mon Sep 14 | Drafted on `rg/synth-sta-tool` with tests |
+| Any RTL, `tb/`, `refs.py` | Fri Sep 11 → Wed Sep 16 | **Not started**. This is the critical path |
+| `qat.py`, `fidelity.py` | Sun Sep 13 | Not started |
+| T1/T2 delay targets | Sun Sep 13 | Blocked on RTL |
+
+**Check before QAT:** MXFP4 PTQ (60.71) came in *below* plain INT4 (61.65), and INT4-b32 (78.46) sits above both, when §4.5 expected INT4-b32 between INT4 and MXFP4. That may be genuine: the `floor(log2 max) − 2` shared-exponent rule clips block maxima in (6, 8)·2^e down to 6. It may also be a bug. SN confirms which before QAT numbers go into H2.
+
+### 10.2 Revised calendar
 
 | Day | SH (RTL + cocotb) | SN (quant + training) | RG (synth, STA, tool, GPUs) | End-of-day deliverable | Gate |
 |-----|-------------------|------------------------|-----------------------------|------------------------|------|
-| **Thu Sep 10** | Suite + cocotb hello (§3.7b); repo skeleton and Makefile with CL | Venv; review CL's `formats.py` + `resnet8.py` + `train.py`; 1-epoch CPU sanity (§3.7c) | Repo init + push; ciel sky130; adder area (§3.7a); OpenSTA spike (§3.4, §3.7d); launch the 60-epoch FP32 run overnight | Four smoke tests pass; `versions.lock` | **G0** |
-| **Fri Sep 11** | `adder_tree.v`, `dp32_int8.v`; `refs.py` INT; `test_decode` INT8; `test_dp32_int` green for INT8 | `formats.py` tests green; `fakequant.py` with BN folding; `calibrate.py`; INT8 PTQ row | INT8 flat synth → `area.csv`; INT8 OpenSTA → `timing.csv`; `run_synth.py` + `run_sta.py` parsers; CI green | First complete point: INT8 accuracy + area + delay | **G1: INT8 end to end** |
-| **Sat Sep 12** | `dp32_int4` green; `docs/fused-stage.md` + `refs.py` FP8 reference (with CL); FP8/E2M1/E8M0 decoders + exhaustive tests | PTQ rows for INT4, FP8, MXINT8, MXFP4, INT4-b32; sanity-bound check; broken-quantizer check | INT4 synth + STA; determinism check (3× INT8); hier template; `data.py` + `pareto.py` drafts | All six PTQ rows; INT4/INT8 verified and measured | **G2: INT4/INT8 verified, PTQ complete** |
-| **Sun Sep 13** | `fused_stage.v` + `dp32_fp8e4m3.v`; directed corners passing; random vectors in progress | `qat.py`; RG launches QAT for INT4 and INT8 overnight; `fidelity.py` drafted | Choose T1/T2 from unconstrained STA (§7.2); rerun INT4/INT8 at T1/T2; `formatscope plot` v0 | Delay targets fixed; first frontier with two points at three targets | — |
-| **Mon Sep 14** | FP8 10k vectors green for `ALIGN_W` 24 and 32 (buffer day for the fused stage) | QAT FP8 launched; fidelity rows for INT8 (exact) and FP8 | FP8 synth at three targets; breakdown run for INT8 and FP8; `recommend` | FP8 verified + measured at matched delay | **G3: FLOOR REACHED** (INT4/INT8/FP8 at two matched targets + PTQ ×5) |
-| **Tue Sep 15** | `dp32_mxint8.v` green; start `dp32_mxfp4.v` | QAT MXINT8 + MXFP4 launched; fidelity MXINT8 | MXINT8 synth + STA; window-sweep runs (FP8 at 32) | Four formats verified and measured | **G4** |
-| **Wed Sep 16** | `dp32_mxfp4.v` green; full `make test` green; tag `rtl-v1` | Fidelity MXFP4; QAT INT4-b32; `docs/results.md` numbers for H1/H2 | MXFP4 synth + STA; MXINT8 and MXFP4 at both window settings; full five-format frontier at three targets; breakdown for all; perturbation runs | Complete sky130 results set, all figures | **G5: full sky130 scope** |
-| **Thu Sep 17** | Lint, waveform-free clean run, README RTL section, Q&A answers for the RTL questions | Results table PNG; accuracy write-up; Q&A for quantization questions | ASAP7 rerun (§7.6, H3) and its frontier figure; `make freeze` into `results/`; README results section | README draft complete; H3 answered | **G6: full proposal scope** |
-| **Fri Sep 18** | Fresh-clone reproduction on Mac; record the test-suite shot | Fresh-clone reproduction on Windows; record the chart/findings shots | Record `formatscope demo` shot; edit video v1 | Video v1; reproduction verified | — |
-| **Sat Sep 19** | Final review of the repo as a stranger | Final review of the README numbers vs CSVs | Tag `v1.0`; flip public; upload video; submit before noon | **Submitted** | **Submit by noon** |
+| **Tue Sep 15** (evening) | Suite + cocotb hello (§3.7b); CL drafts `adder_tree.v`, `dp32_int8.v`/`int4`, `refs.py` INT, `test_dp32_int.py` tonight | `qat.py` (§4.6) with a one-line launch command in the PR; explain MXFP4 < INT4 (§10.1) | Review and merge `rg/synth-sta-tool`; run `scripts/setup_lane_s_wsl.sh` on the 4070 Ti (and the 5080, for parallel synth later); **G0 smoke passes**; launch QAT for all six overnight once `qat.py` lands (≈ 12 min on the 4070 Ti) | Toolchain proven on real Yosys + OpenSTA; CI green; QAT running | **G0** |
+| **Wed Sep 16** | INT8 + INT4 10k green by noon; afternoon: `docs/fused-stage.md`, `refs.py` FP8, FP8/E2M1/E8M0 decoders + exhaustive tests; start `fused_stage.v` | Commit QAT rows (all six); `fidelity.py` with INT4/INT8 exact rows | INT8 + INT4 synth unconstrained + STA; determinism check (3× INT8); fix any parser mismatch against real tool output; first real `formatscope plot` / `recommend` | INT4/INT8 verified and measured; PTQ + QAT complete | **G1 + G2** |
+| **Thu Sep 17** | `fused_stage.v` + `dp32_fp8e4m3.v` 10k green at `ALIGN_W` 24 and 32 **by noon**; afternoon `dp32_mxint8.v` (INT8 tree + two-term fused stage); evening `dp32_mxfp4.v` | Fidelity rows for FP8, then MXINT8/MXFP4 as each unit lands; `docs/results.md` H1/H2 draft | FP8 unconstrained STA → **fix T1/T2 by 14:00** (§7.2, D7) into `synth/targets.toml`; INT4/INT8/FP8 at T1/T2; hier breakdown; FP8 window sweep; MX units synthesized as they go green; ASAP7 libs set up; perturbation runs overnight, split across both GPU machines | FP8 at matched delay (floor) by afternoon; four or five formats measured by night | **G3 (floor)** by 18:00; **G4** by night |
+| **Fri Sep 18** | MXFP4 green if not already; full `make test`; **tag `rtl-v1` by 11:00**; README RTL section; fresh-clone reproduction on Mac; record test-suite shot | Fresh-clone reproduction on Windows; results table PNG; H1/H2 final numbers; record chart/findings shots | Re-run every synthesis from `rtl-v1` (both machines); MXINT8/MXFP4 at both windows; breakdown for all; ASAP7 rerun + figure (H3); `make plot`; `make freeze`; README results section; record `formatscope demo`; edit video v1 in the evening | Complete results set, figures, README, video v1 | **G5 + G6** |
+| **Sat Sep 19** | Final review of the repo as a stranger | Final review of the README numbers vs CSVs | Tag `v1.0`; flip public; upload video; submit **before noon** | **Submitted** | **Submit by noon** |
 
-**Fallbacks (used only if a gate slips; the plan above is the deliverable).** G1 misses → the pipeline register or parser is the blocker; fix that before touching any other format. G2 misses → INT-only still tells H1's core story via the INT4↔INT8 spread. G3 misses (fused stage not bit-exact by Sep 14) → keep working it through Sep 15 while RG synthesizes the current FP8 RTL and reports its area with an explicit "not yet bit-exact" label; MX starts Sep 16. G5 misses → cut in the proposal's order: ASAP7 first, then the third delay target, then QAT on the MX formats. The fine-tuning pass on INT/FP8 is protected because H2 needs it.
+**Dated cut triggers (full scope stays the plan; these fire only if a checkpoint is missed).**
+
+- **FP8 not bit-exact by Thu 18:00:** drop ASAP7. RG synthesizes the current FP8 RTL with a "not yet bit-exact" label so the floor figure still exists. MX units start Friday morning.
+- **MX units not green by Fri 11:00:** drop the third delay target, tag `rtl-v1` on whatever is green, and report MX accuracy only.
+- **QAT on the MX formats** is the proposal's third cut, but it costs minutes of GPU time and runs Tuesday night with the rest, so in practice it never gets cut.
+- **Never below the floor:** INT4, INT8, and FP8 verified end to end at two matched delay targets, plus PTQ accuracy for all five formats.
+
+**Why this can still close:** synthesis and timing are scripted end to end, so once RTL lands each unit costs RG about one command and minutes of machine time. MXINT8 and MXFP4 reuse the INT tree and the fused stage, so they come quickly *after* FP8. The single risk that decides the outcome is the fused stage on Thursday morning (risk 2). CL drafts all remaining RTL and references tonight and Wednesday so SH's time goes to simulating and debugging, not typing.
 
 ---
 
@@ -696,7 +719,7 @@ SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits).
 | D4 | E8M0 0xFF in hardware | block term = 0, sticky `flag_nan` |
 | D5 | MXINT8 code −128 | quantizer never emits it; RTL treats it as an ordinary int8 |
 | D6 | Alignment window widths | 24 (default) and 32 |
-| D7 | Delay-target rule | T1 = slowest unconstrained unit rounded up to 100 ps; T2 ≈ 0.7 × T1; fixed Sep 13 |
+| D7 | Delay-target rule | T1 = slowest unconstrained unit rounded up to 100 ps; T2 ≈ 0.7 × T1; fixed Thu Sep 17 14:00 |
 | D8 | "Spread across seeds" | five perturbation runs at ±1%, ±2% of `-D`, plus a determinism check |
 | D9 | ResNet-8 definition and BN | 6n+2 with n=1, widths 16/32/64, zero-pad shortcuts; BN folded before quantization |
 | D10 | Activation calibration statistic | 99.99th percentile of |x| over 512 images; `max` as a second row if time |
