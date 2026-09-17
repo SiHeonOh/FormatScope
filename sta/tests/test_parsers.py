@@ -91,7 +91,7 @@ def test_template_renders_and_keeps_tcl_braces():
                                   "TOP": "dp32_int8", "PERIOD_NS": "5.600"})
     assert not re.search(r"\{[A-Z_]+\}", rendered)
     assert "create_clock -name clk -period 5.600 [get_ports clk]" in rendered
-    assert "-fields {slew cap input nets fanout}" in rendered
+    assert "-fields {slew cap input net fanout}" in rendered
     assert rendered.count("{") == rendered.count("}")
 
 

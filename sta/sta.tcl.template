@@ -20,6 +20,6 @@ foreach port [all_inputs] {
 set_input_delay  -clock clk 0 $data_inputs
 set_output_delay -clock clk 0 [all_outputs]
 
-report_checks -path_delay max -fields {slew cap input nets fanout} -digits 3
+report_checks -path_delay max -fields {slew cap input net fanout} -digits 3
 report_wns -digits 3
 report_tns -digits 3
