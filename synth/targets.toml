@@ -4,8 +4,9 @@
 # re-running every synthesis. Values are picoseconds.
 
 [sky130hd]
-# t1_ps = 0
-# t2_ps = 0
+# Slowest unconstrained unit: fp8e4m3 a24, 48889 ps (OpenSTA 3.1.0, 2026-09-17).
+t1_ps = 48900
+t2_ps = 34230
 
 [asap7]
 # t1_ps = 0
