@@ -40,6 +40,9 @@ if dev == "cpu":
 PY
 
 cp "$CSV" "$SNAPSHOT"
+# Once the snapshot exists, a failed train or PTQ step must not leave its
+# partial rows in the committed table either.
+trap 'cp "$SNAPSHOT" "$CSV"; rm -f "$SNAPSHOT"' EXIT
 BASE_LINES=$(wc -l < "$SNAPSHOT")
 
 step "FP32 baseline ($EPOCHS epochs, seed 0)"
