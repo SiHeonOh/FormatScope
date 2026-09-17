@@ -315,14 +315,23 @@ def breakdown_from_stat(stat_text, top, cell_areas):
     modules = _load_stat_json(stat_text).get("modules", {})
     totals = {}
 
+    def submodule(cell_type):
+        # stat -json names an instance's module without the leading backslash
+        # that the same module carries as a key in the modules table.
+        for candidate in (cell_type, f"\\{cell_type}"):
+            if candidate in modules:
+                return candidate
+        return None
+
     def visit(key, count, inherited):
         stage = stage_of(key)
         if stage == "other":
             stage = inherited
         for cell_type, n in modules[key].get("num_cells_by_type", {}).items():
             n = int(n)
-            if cell_type in modules:
-                visit(cell_type, count * n, stage)
+            sub = submodule(cell_type)
+            if sub is not None:
+                visit(sub, count * n, stage)
             elif cell_type in cell_areas:
                 totals[stage] = totals.get(stage, 0.0) + count * n * cell_areas[cell_type]
             elif cell_type.startswith("$"):

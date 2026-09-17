@@ -311,3 +311,13 @@ def test_abc_margin_tightens_the_mapping_target(tmp_path):
     assert rs.abc_target_ps(36600.0, 0.03) == pytest.approx(36600 / 1.03)
     targets.write_text("[sky130hd]\nt1_ps = 36600\n")
     assert rs.load_abc_margin("sky130hd", targets) == 0.0
+
+
+def test_breakdown_resolves_unescaped_submodule_names():
+    # stat -json lists an instance's module as "decode_fp8e4m3" while the
+    # modules table keys it "\decode_fp8e4m3"; both spellings must resolve.
+    unescaped = HIER_JSON.replace('"\\\\decode_fp8e4m3": 32', '"decode_fp8e4m3": 32')
+    assert '"decode_fp8e4m3": 32' in unescaped
+    areas = rs.liberty_cell_areas(LIBERTY)
+    totals = rs.breakdown_from_stat(unescaped, "dp32_fp8e4m3", areas)
+    assert totals["decode"] == pytest.approx(32 * 3.7536)
