@@ -59,18 +59,22 @@ def _append_csv(top1, top5, epochs, seed, checkpoint):
 
 
 def main():
-    torch.manual_seed(0)
-    np.random.seed(0)
+    # SEED=n varies the run for the multi-seed sweep (scripts/seed_sweep.sh).
+    # Seed 0 keeps the plain checkpoint name so quant/eval.py sees no change.
+    seed = int(os.environ.get("SEED", 0))
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     epochs = int(os.environ.get("EPOCHS", 60))
     device = _select_device()
-    print(f"Device: {device}, epochs: {epochs}")
+    print(f"Device: {device}, epochs: {epochs}, seed: {seed}")
 
     os.makedirs(_CKPT_DIR, exist_ok=True)
-    ckpt_last = os.path.join(_CKPT_DIR, "fp32.pt")
-    ckpt_best = os.path.join(_CKPT_DIR, "fp32_best.pt")
+    stem = "fp32" if seed == 0 else f"fp32_seed{seed}"
+    ckpt_last = os.path.join(_CKPT_DIR, f"{stem}.pt")
+    ckpt_best = os.path.join(_CKPT_DIR, f"{stem}_best.pt")
 
-    train_loader, test_loader = get_loaders(batch_size=128)
+    train_loader, test_loader = get_loaders(batch_size=128, seed=seed)
 
     model = ResNet8(num_classes=10).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -103,7 +107,8 @@ def main():
 
         final_top1, final_top5 = top1, top5
 
-    _append_csv(final_top1, final_top5, epochs, seed=0, checkpoint="models/checkpoints/fp32.pt")
+    _append_csv(final_top1, final_top5, epochs, seed=seed,
+                checkpoint=f"models/checkpoints/{stem}.pt")
     print(f"Done. Final top-1: {final_top1:.2f}%  top-5: {final_top5:.2f}%")
 
 
