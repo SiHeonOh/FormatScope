@@ -2,7 +2,10 @@
 
 HARDWARE_FORMATS = ["int4", "int8", "fp8e4m3", "mxint8", "mxfp4"]
 ALL_FORMATS = HARDWARE_FORMATS + ["int4_b32"]
-TARGETS = ["unc", "t1", "t2"]
+# Each unit at its own fastest mapping and at the shared clock T1. There is no
+# T2: no period tighter than T1 constrains both the INT and the fused units
+# (build-plan.md D7).
+TARGETS = ["unc", "t1"]
 
 # Storage cost per element, amortizing the 8-bit E8M0 shared scale over the
 # 32-element block for the block-scaled formats (S1.3).

@@ -286,3 +286,28 @@ def test_demo_prints_area_and_time_and_writes_no_csv(tmp_path, monkeypatch, caps
     assert "dp32_int8 on sky130hd (unc): 21,873.5 um^2, 2,301 cells" in out
     assert re.search(r"synthesized in \d+\.\d s with Yosys 0\.57", out)
     assert not (tmp_path / "results/area.csv").exists()
+
+
+def test_append_rows_with_key_replaces_the_earlier_row(tmp_path):
+    path = tmp_path / "area.csv"
+    key = ("lib", "format", "unit", "target", "align_w", "run")
+    row = dict.fromkeys(rs.AREA_COLUMNS, "")
+    row.update(lib="sky130hd", format="int8", unit="dp32", target="t1", align_w=24, run=0,
+               area_um2="1.0")
+    rs.append_rows(path, rs.AREA_COLUMNS, [row], key=key)
+    row["area_um2"] = "2.0"
+    rs.append_rows(path, rs.AREA_COLUMNS, [row], key=key)          # same key: replaced
+    rs.append_rows(path, rs.AREA_COLUMNS, [dict(row, format="int4", area_um2="3.0")], key=key)
+    lines = path.read_text().splitlines()
+    assert len(lines) == 3, lines
+    assert lines[1].startswith("sky130hd,int8,dp32,t1,,24,0,2.0")
+    assert lines[2].startswith("sky130hd,int4,dp32,t1,,24,0,3.0")
+
+
+def test_abc_margin_tightens_the_mapping_target(tmp_path):
+    targets = tmp_path / "targets.toml"
+    targets.write_text("[sky130hd]\nt1_ps = 36600\nabc_margin = 0.03\n")
+    assert rs.load_abc_margin("sky130hd", targets) == pytest.approx(0.03)
+    assert rs.abc_target_ps(36600.0, 0.03) == pytest.approx(36600 / 1.03)
+    targets.write_text("[sky130hd]\nt1_ps = 36600\n")
+    assert rs.load_abc_margin("sky130hd", targets) == 0.0

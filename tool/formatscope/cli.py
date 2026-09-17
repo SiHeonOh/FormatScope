@@ -86,7 +86,8 @@ def table_rows(rdir, lib, align_w):
     by_target = {t: {p.format: p for p in load_points(rdir, lib, t, align_w)} for t in TARGETS}
     header = ["format", "bits per number", "PTQ top-1", "QAT top-1"]
     header += [f"area {t} (µm²)" for t in TARGETS] + [f"delay {t} (ps)" for t in TARGETS]
-    rows = [["fp32", _bits("fp32"), _fmt(acc.get(("fp32", "none")), ".2f"), "—"] + ["—"] * 6]
+    rows = [["fp32", _bits("fp32"), _fmt(acc.get(("fp32", "none")), ".2f"), "—"]
+            + ["—"] * (2 * len(TARGETS))]
     for fmt in ALL_FORMATS:
         row = [fmt, _bits(fmt),
                _fmt(acc.get((fmt, "ptq")), ".2f"), _fmt(acc.get((fmt, "qat")), ".2f")]
