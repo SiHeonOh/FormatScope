@@ -18,9 +18,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: full 10,000-vector DP32 runs, skipped in CI")
 
 
-def run(sources, toplevel, test_module, parameters=None, extra_env=None, build_name=None):
+def run(sources, toplevel, test_module, parameters=None, extra_env=None, build_name=None,
+        test_filter=None):
     """Build `sources` with `toplevel` and run the cocotb tests in `test_module`.
 
+    `test_filter` is a regex selecting which cocotb tests in the module run.
     Waveforms are written only when FORMATSCOPE_VCD=1, to keep runs fast.
     """
     from cocotb_tools.runner import get_runner
@@ -48,4 +50,5 @@ def run(sources, toplevel, test_module, parameters=None, extra_env=None, build_n
         test_dir=build_dir,
         extra_env=extra_env or {},
         waves=waves,
+        test_filter=test_filter,
     )
