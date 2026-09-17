@@ -301,7 +301,12 @@ def breakdown_from_stat(stat_text, top, cell_areas):
                 visit(cell_type, count * n, stage)
             elif cell_type in cell_areas:
                 totals[stage] = totals.get(stage, 0.0) + count * n * cell_areas[cell_type]
-            elif not cell_type.startswith("$"):
+            elif cell_type.startswith("$"):
+                # An internal cell surviving to stat means it was never mapped to
+                # the library: its area is unknown and this stage is under-reported.
+                print(f"warning: {count * n} unmapped {cell_type} cell(s) in {key} "
+                      f"not counted toward stage '{stage}'")
+            else:
                 raise ValueError(f"cell {cell_type} in {key} is neither a module nor a liberty cell")
 
     visit(_module_key(modules, top), 1, "other")
