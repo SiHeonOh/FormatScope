@@ -110,8 +110,13 @@ def test_table_has_every_configuration(rdir):
     assert [r[0] for r in rows] == ["fp32", "int4", "int8", "fp8e4m3", "mxint8", "mxfp4", "int4_b32"]
     assert len(header) == len(rows[0])
     int4 = rows[1]
-    assert int4[1:3] == ["62.00", "80.00"]
+    assert int4[header.index("PTQ top-1")] == "62.00"
+    assert int4[header.index("QAT top-1")] == "80.00"
     assert int4[header.index("area t1 (µm²)")] == "8100"
+    # Block-scaled formats carry the 8-bit shared scale amortized over 32 elements.
+    bits = {r[0]: r[header.index("bits per number")] for r in rows}
+    assert bits == {"fp32": "32", "int4": "4", "int8": "8", "fp8e4m3": "8",
+                    "mxint8": "8.25", "mxfp4": "4.25", "int4_b32": "4.25"}
 
 
 def test_plot_writes_png_and_svg(rdir):
