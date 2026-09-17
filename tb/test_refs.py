@@ -96,14 +96,80 @@ def test_fused_stage_against_exact_arithmetic(align_w):
         info = {}
         new, _ = refs.dp32_fp8(a, b, acc, align_w, info)
         exact = refs.fp32_value(acc) + refs.fp8_product_sum(a, b)
-        if not info["term_sticky"] and not info["rest_sticky"]:
-            assert new == round_fp32(exact), f"step {step}: 0x{new:08x} vs 0x{round_fp32(exact):08x}"
-            exact_hits += 1
-        else:
-            got = refs.fp32_value(new)
-            ulp = Fraction(2) ** (((new >> 23) & 0xFF) - 127 - 23) if new else Fraction(0)
-            bound = ulp + 33 * Fraction(2) ** (info["t_max"] - (align_w + 2))
-            assert abs(got - exact) <= bound, f"step {step}: error {float(got - exact)} > {float(bound)}"
-            bounded_hits += 1
+        assert not info["saturate"] and not info["underflow"], f"step {step}: FP8 left FP32 range"
+        hit = _check_against_exact(new, exact, info, n_terms=33, align_w=align_w, where=f"step {step}")
+        exact_hits += hit == "exact"
+        bounded_hits += hit == "bounded"
         acc = new
     assert exact_hits > 100 and bounded_hits > 100
+
+
+def _check_against_exact(new, exact, info, n_terms, align_w, where):
+    """'exact' (no dropped bits: correctly rounded), 'bounded', or 'range' (saturated / underflowed)."""
+    if info["saturate"]:
+        assert new & 0x7FFFFFFF == refs.FP32_MAX_FINITE and abs(exact) > Fraction(2) ** 127, where
+        return "range"
+    if info["underflow"]:
+        assert new == 0 and abs(exact) < Fraction(2) ** -125, where
+        return "range"
+    if not info["term_sticky"] and not info["rest_sticky"]:
+        assert new == round_fp32(exact), f"{where}: 0x{new:08x} vs 0x{round_fp32(exact):08x}"
+        return "exact"
+    got = refs.fp32_value(new)
+    ulp = Fraction(2) ** (((new >> 23) & 0xFF) - 127 - 23) if new else Fraction(0)
+    bound = ulp + n_terms * Fraction(2) ** (info["t_max"] - (align_w + 2))
+    assert abs(got - exact) <= bound, f"{where}: error {float(got - exact)} > {float(bound)}"
+    return "bounded"
+
+
+def test_mx_block_sums_match_formats():
+    """The integer block sums times their scale equal formats.decode products, summed."""
+    rng = np.random.default_rng(1)
+    for fmt, w in (("mxint8", 8), ("mxfp4", 4)):
+        for _ in range(200):
+            a, b = rng.integers(0, 1 << w, size=(2, 32))
+            sa, sb = (int(s) for s in rng.integers(100, 155, size=2))
+            ours = refs.mx_block_value(fmt, a, b, sa, sb)
+            va = formats.decode(fmt, a, np.array(sa))
+            vb = formats.decode(fmt, b, np.array(sb))
+            theirs = sum((Fraction(float(x)) * Fraction(float(y)) for x, y in zip(va.ravel(), vb.ravel())),
+                         Fraction(0))
+            assert ours == theirs, f"{fmt}: {ours} vs {theirs}"
+
+
+def test_mx_extreme_block_sums():
+    assert refs.mx_block_sum("mxint8", [0x80] * 32, [0x80] * 32) == 1 << 19
+    assert refs.mx_block_sum("mxint8", [0x80] * 32, [0x7F] * 32) == -128 * 127 * 32
+    assert refs.mx_block_sum("mxfp4", [0x7] * 32, [0x7] * 32) == 144 * 32
+    assert refs.mx_block_sum("mxfp4", [0xF] * 32, [0x7] * 32) == -144 * 32
+
+
+def test_mx_nan_scale_contributes_zero():
+    bits, nan = refs.dp32_mx("mxint8", [64] * 32, [64] * 32, 0xFF, 127, 0x3F800000, 24)
+    assert (bits, nan) == (0x3F800000, True)
+
+
+@pytest.mark.parametrize("fmt", ["mxint8", "mxfp4"])
+@pytest.mark.parametrize("align_w", [24, 32])
+def test_mx_against_exact_arithmetic(fmt, align_w):
+    rng = np.random.default_rng(0)
+    w = refs.MX[fmt]["w"]
+    acc = 0
+    hits = {"exact": 0, "bounded": 0, "range": 0}
+    for step in range(3000):
+        a, b = rng.integers(0, 1 << w, size=(2, 32))
+        mode = rng.random()
+        if mode < 0.85:
+            sa, sb = np.clip(np.rint(rng.normal(127, 8, size=2)), 0, 254).astype(int)
+        elif mode < 0.97:
+            sa, sb = rng.integers(0, 255, size=2)
+        else:
+            sa, sb = rng.integers(0, 256, size=2)
+        if rng.random() < 0.05:
+            acc = 0
+        info = {}
+        new, _ = refs.dp32_mx(fmt, a, b, int(sa), int(sb), acc, align_w, info)
+        exact = refs.fp32_value(acc) + refs.mx_block_value(fmt, a, b, int(sa), int(sb))
+        hits[_check_against_exact(new, exact, info, n_terms=2, align_w=align_w, where=f"{fmt} step {step}")] += 1
+        acc = new
+    assert hits["exact"] > 100 and hits["bounded"] > 100 and hits["range"] > 10, hits

@@ -11,7 +11,7 @@ An INT unit adds whole numbers, so its sum is exact. FP8 and MX numbers carry an
 | Parameter | FP8 | MXINT8 | MXFP4 | Meaning |
 |-----------|-----|--------|-------|---------|
 | `N_PROD` | 32 | 1 | 1 | Product terms entering the stage (the accumulator is one more; `N_TERMS = N_PROD + 1`) |
-| `SIG_W` | 8 | 21 | 14 | Width of each product term's magnitude field |
+| `SIG_W` | 8 | 20 | 13 | Width of each product term's magnitude field (MX: the block sum's magnitude, one bit less than its signed width) |
 | `ALIGN_W` | 24, 32 | 24, 32 | 24, 32 | Alignment window (decision D6). 24 is FP32's own significand precision |
 | `EXP_W` | 10 | 10 | 10 | Signed width of every exponent inside the stage |
 
@@ -29,7 +29,7 @@ Every term, including the accumulator, is a magnitude field `F` of a fixed width
 |------|------|-----|-----|
 | FP8 lane product | 8 | `sig_a × sig_b` | `exp_a + exp_b − 10` |
 | Accumulator (FP32) | 24 | `{1, fraction[22:0]}` | `biased_exp − 126` |
-| MX block sum | 21 / 14 | `abs(block sum)` | set by the MX unit (§5.6, §5.7) |
+| MX block sum | 20 / 13 | `abs(S) << lz` (normalized) | `scale_a + scale_b − OFFSET + SIG_W − lz` (see "MX units" below) |
 
 **FP8 decoder** (`decode_fp8e4m3.v`, `refs.decode_fp8`): code `S.EEEE.MMM`.
 
@@ -58,7 +58,7 @@ Let `WW = ALIGN_W + 2` (the window plus guard and round positions) and `K = clog
    - The remaining `REST_W = MAG_W − 26` bits OR together with every term's sticky bit to form sticky.
    - Round up when `guard & (round | sticky | sig[0])`. If that carries out of 24 bits, the significand becomes `0x800000` and the exponent increments.
    - Unbiased exponent: `e = T_max + K − lzc (+1 on round overflow)`.
-8. **Pack** `{sign, e + 127, fraction}`. A zero magnitude packs as all zeros (+0), even if sticky is set.
+8. **Pack** `{sign, e + 127, fraction}`. A zero magnitude packs as all zeros (+0), even if sticky is set. If `e > 127` the result saturates to the largest finite value `{sign, 0x7F7FFFFF}`; if `e < −126` it is +0. Only extreme MX scales reach either case (see "Range analysis").
 
 ## Widths
 
@@ -82,7 +82,27 @@ Let `WW = ALIGN_W + 2` (the window plus guard and round positions) and `K = clog
 - FP8 products lie in `[2⁻¹⁸, 448²]`. A product's `T` lies in `[−10, 18]`.
 - One accumulation adds at most `32 × 448² < 2²³`. Overflowing FP32 (`2¹²⁸`) would take more than 2¹⁰⁴ accumulations.
 - Every product is a multiple of 2⁻¹⁸, and a register value carries at most 24 significant bits. So after any cancellation the smallest nonzero result is at least about 2⁻⁴¹, far above FP32's normal minimum `2⁻¹²⁶`.
-- The tests assert `1 ≤ biased_exp ≤ 254` on every result instead of building hardware for the other cases. MX units with extreme scales (0 and 254 on both inputs) can leave this range; that policy is decided with §5.6.
+- MX units are different: an E8M0 scale spans 2^−127 to 2^127, so two extreme scales multiply to far outside FP32 (both 254: about 2^261; both 0: about 2^−247). The policy for all fused units is **saturate to ±max finite on overflow, +0 on underflow**. It costs two 10-bit compares. `tb/test_refs.py` asserts FP8 never reaches either case, and the MX tests exercise both. Real model scales sit near 127, nowhere near these limits.
+
+## MX units (§5.6, §5.7)
+
+Each MX unit forms an exact integer block sum `S` with the INT tree, then enters the fused stage with a single product term (`N_PROD = 1`).
+
+| | MXINT8 | MXFP4 |
+|---|---|---|
+| Element value | `code / 64` (INT8, two's complement) | `mag / 2`, `mag ∈ {0,1,2,3,4,6,8,12}` (E2M1 decoded ×2) |
+| Lane product | 16-bit signed, `mul_stage_int` (reused from INT8) | 9-bit signed, `|mag_a × mag_b| ≤ 144` |
+| Block sum `S` | 21-bit signed, `|S| ≤ 32 × 128² = 2¹⁹` | 14-bit signed, `|S| ≤ 32 × 144 = 4608 < 2¹³` |
+| Block value | `S × 2^(scale_a + scale_b − 266)` (two biases 254 + 2⁻⁶ per element) | `S × 2^(scale_a + scale_b − 256)` (two biases 254 + ×2 per magnitude) |
+| `OFFSET` | 266 | 256 |
+
+`|S| ≤ 2¹⁹` needs 20 magnitude bits, not the plan's 21. The plan's "block sum exactly at ±2²⁰" corner cannot occur; the tests use the real extremes, `+2¹⁹` from (−128)² and `−520192` from −128 × 127.
+
+**Normalization (`align_stage_mxnorm`).** The MX front takes `|S|`, counts its leading zeros `lz` over `SIG_W` bits, and passes `mag = |S| << lz` with `T = scale_a + scale_b − OFFSET + SIG_W − lz`. This departs from the plan's "feed `|block_sum|`". A small block sum in an unnormalized 20-bit field would push the window up to 19 bits above its leading one and truncate that many bits of the accumulator. One leading-zero counter and one shifter avoid it. FP8 does not do this, because it would need 32 of each.
+
+**E8M0 NaN (decision D4).** If either scale is 0xFF, the block term is forced to zero and `flag_nan` sets on that accumulation cycle, with the same sticky and clear rules as FP8.
+
+**MXFP4 products.** The proposal describes the E2M1 product as a table. Each product magnitude is a function of 6 input bits (two 3-bit magnitude codes), so a table and a 4-bit × 4-bit multiply of the decoded magnitudes reduce to the same logic in synthesis. The RTL writes the multiply for readability.
 
 ## Precision notes (reported, not hidden)
 
@@ -92,6 +112,7 @@ Let `WW = ALIGN_W + 2` (the window plus guard and round positions) and `K = clog
 
 ## Policies
 
-- **NaN (decision D3).** A lane with a NaN code on either input contributes zero and does not affect `T_max`. `flag_nan` is sticky: it sets on any accumulation cycle (`en = 1`, `clear = 0`) that saw a NaN lane, and it clears on `rst_n` or `clear`, the same as the accumulator.
+- **NaN (decisions D3, D4).** A lane with a NaN code on either input (FP8), or a block with a 0xFF scale (MX), contributes zero and does not affect `T_max`. `flag_nan` is sticky: it sets on any accumulation cycle (`en = 1`, `clear = 0`) that saw one, and it clears on `rst_n` or `clear`, the same as the accumulator.
+- **Out of range.** Saturate to ±max finite on overflow, +0 on underflow (step 8).
 - **Negative zero.** FP8 code `0x80` decodes to `sig = 0` and contributes nothing. A zero result is always +0.
 - **Control.** `clear` wins over `en`, as in the INT units. Reset is synchronous.
