@@ -1,10 +1,12 @@
 # Flat synthesis for area (build-plan.md S7.1). Rendered by synth/run_synth.py.
 # Fairness rule: only the RTL sources, the top module, ALIGN_W, and the abc -D target change between formats.
+# -noalumacc on every unit: otherwise synth fuses the 32 multipliers and the tree into one $macc and ABC
+# takes minutes (MXINT8 >17 min); kept separate it finishes in seconds with equal or smaller netlists.
 read_liberty -lib {LIB}
 read_verilog -sv {SOURCES}
 {CHPARAM}
 hierarchy -check -top {TOP}
-synth -top {TOP} -flatten
+synth -top {TOP} -flatten -noalumacc
 dfflibmap -liberty {LIB}
 abc -liberty {LIB} {DTARGET}
 opt_clean

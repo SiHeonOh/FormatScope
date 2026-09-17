@@ -4,7 +4,7 @@ read_liberty -lib {LIB}
 read_verilog -sv {SOURCES}
 {CHPARAM}
 hierarchy -check -top {TOP}
-synth -top {TOP}
+synth -top {TOP} -noalumacc
 dfflibmap -liberty {LIB}
 abc -liberty {LIB} {DTARGET}
 opt_clean
