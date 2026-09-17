@@ -121,6 +121,19 @@ def load_target_ps(lib_id, target, targets_toml=TARGETS_TOML):
     return float(value)
 
 
+def load_abc_margin(lib_id, targets_toml=TARGETS_TOML):
+    """Fraction by which ABC's -D is tightened below the reported target (0 if unset)."""
+    with open(targets_toml, "rb") as f:
+        targets = tomllib.load(f)
+    return float(targets.get(lib_id, {}).get("abc_margin", 0.0))
+
+
+def abc_target_ps(target_ps, margin):
+    """ABC's -D for a reported clock: ABC's own timing reads a little faster than
+    OpenSTA on the same netlist, so mapping exactly to the clock lands just over it."""
+    return target_ps / (1.0 + margin)
+
+
 # ---------------------------------------------------------------- rendering
 
 def dtarget_arg(target, dtarget_ps):
@@ -341,9 +354,24 @@ def area_row(lib_id, fmt, target, dtarget_ps, align_w, run, area, cells, yosys_v
     }
 
 
-def append_rows(path, columns, rows):
+def append_rows(path, columns, rows, key=None):
+    """Append `rows`, writing the header once in Appendix A order.
+
+    With `key` (column names), an existing row with the same key values is
+    replaced, so re-running a unit overwrites its earlier row instead of
+    stacking a duplicate the loader would have to resolve.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    if key and path.exists() and path.stat().st_size > 0:
+        with open(path, newline="") as f:
+            existing = list(csv.DictReader(f))
+        new_keys = {tuple(str(row[k]) for k in key) for row in rows}
+        kept = [r for r in existing if tuple(r.get(k, "") for k in key) not in new_keys]
+        with open(path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+            writer.writerows(kept)
     is_new = not path.exists() or path.stat().st_size == 0
     with open(path, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns)
@@ -449,7 +477,8 @@ def synth_units(args):
                                                   args.perturb and not (args.hier or args.demo),
                                                   1 if args.demo else args.runs):
         base_ps = load_target_ps(args.lib, target)
-        dtarget_ps = None if base_ps is None else base_ps * factor
+        dtarget_ps = (None if base_ps is None
+                      else abc_target_ps(base_ps, load_abc_margin(args.lib)) * factor)
         sources = SOURCES[fmt]
         check_sources(sources, args.dry_run)
         top = top_name(fmt)
@@ -475,7 +504,8 @@ def synth_units(args):
             rows = [{"lib": args.lib, "format": fmt, "target": target, "align_w": align_w,
                      "stage": stage, "area_um2": f"{totals[stage]:.4f}", "date": date}
                     for stage in STAGES if totals.get(stage, 0.0) > 0]
-            append_rows(BREAKDOWN_CSV, BREAKDOWN_COLUMNS, rows)
+            append_rows(BREAKDOWN_CSV, BREAKDOWN_COLUMNS, rows,
+                        key=("lib", "format", "target", "align_w", "stage"))
             print(f"{fmt} {target} a{align_w}: " +
                   ", ".join(f"{r['stage']} {r['area_um2']}" for r in rows))
         else:
@@ -483,7 +513,8 @@ def synth_units(args):
                                            ROOT / f"{out_prefix}_stat.txt", top)
             row = area_row(args.lib, fmt, target, dtarget_ps, align_w, run, area, cells,
                            version, date)
-            append_rows(AREA_CSV, AREA_COLUMNS, [row])
+            append_rows(AREA_CSV, AREA_COLUMNS, [row],
+                        key=("lib", "format", "unit", "target", "align_w", "run"))
             print(f"{fmt} {target} a{align_w} r{run}: {row['area_um2']} um^2, {cells} cells")
 
 

@@ -184,7 +184,8 @@ def time_netlists(args):
             "wns_ps": f"{parse_wns_ns(report) * 1000:.1f}",
             "sta_version": version, "date": date,
         }
-        append_rows(TIMING_CSV, TIMING_COLUMNS, [row])
+        append_rows(TIMING_CSV, TIMING_COLUMNS, [row],
+                    key=("lib", "format", "unit", "target", "align_w", "run"))
         print(f"{stem}: delay {row['delay_ps']} ps, wns {row['wns_ps']} ps @ {period:.3f} ns")
 
 

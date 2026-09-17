@@ -719,7 +719,7 @@ The team kept the **full proposal scope** at the Sep 15 re-plan. Quantization is
 | D4 | E8M0 0xFF in hardware | block term = 0, sticky `flag_nan` |
 | D5 | MXINT8 code −128 | quantizer never emits it; RTL treats it as an ordinary int8 |
 | D6 | Alignment window widths | 24 (default) and 32 |
-| D7 | Delay-target rule | T1 = slowest unconstrained unit's arrival time plus setup (period − WNS from its unconstrained STA row), rounded up to 100 ps; T2 ≈ 0.7 × T1; fixed Thu Sep 17 14:00 |
+| D7 | Delay-target rule | T1 = 1.03 × (slowest unconstrained unit's arrival + setup, i.e. period − WNS from its unconstrained STA row), rounded up to 100 ps; the 3% covers ABC-vs-OpenSTA model error. No T2: the INT units are ~3× faster than the fused units at their fastest mapping, so no tighter shared period constrains both, and ABC cannot map a unit faster than its delay-optimal result. Each unit is reported unconstrained and at T1. Fixed Thu Sep 17 |
 | D8 | "Spread across seeds" | five perturbation runs at ±1%, ±2% of `-D`, plus a determinism check |
 | D9 | ResNet-8 definition and BN | 6n+2 with n=1, widths 16/32/64, zero-pad shortcuts; BN folded before quantization |
 | D10 | Activation calibration statistic | 99.99th percentile of |x| over 512 images; `max` as a second row if time |
