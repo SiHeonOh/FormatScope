@@ -68,6 +68,11 @@ if [ -n "$PDK_HASH" ]; then lock sky130-open_pdks "$PDK_HASH"; fi
 step "OpenSTA"
 if command -v sta >/dev/null 2>&1; then
   echo "using $(command -v sta)"
+  if [ -d "$TOOLS/OpenSTA/.git" ]; then
+    lock opensta "native:$(git -C "$TOOLS/OpenSTA" rev-parse --short HEAD)"
+  else
+    lock opensta "path:$(sta -version)"
+  fi
 elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   if ! docker image inspect opensta >/dev/null 2>&1; then
     [ -d "$TOOLS/OpenSTA" ] || git clone https://github.com/parallaxsw/OpenSTA "$TOOLS/OpenSTA"
@@ -83,7 +88,12 @@ else
   sudo apt-get install -y build-essential cmake tcl-dev swig bison flex libeigen3-dev zlib1g-dev git automake autoconf libtool
   if [ ! -f "$TOOLS/cudd/lib/libcudd.a" ]; then
     [ -d "$TOOLS/cudd-src" ] || git clone https://github.com/ivmai/cudd "$TOOLS/cudd-src"
-    (cd "$TOOLS/cudd-src" && ./configure --prefix="$TOOLS/cudd" && make -j"$(nproc)" && make install)
+    # A clone gives the generated autotools files fresh mtimes, so make tries to
+    # regenerate them with aclocal-1.14, which Ubuntu 24.04 does not ship.
+    # Touch them in dependency order so they read as up to date.
+    (cd "$TOOLS/cudd-src" && touch aclocal.m4 && sleep 1 && touch Makefile.in configure \
+      && sleep 1 && find . -name config.h.in -exec touch {} + \
+      && ./configure --prefix="$TOOLS/cudd" && make -j"$(nproc)" && make install)
   fi
   [ -d "$TOOLS/OpenSTA" ] || git clone https://github.com/parallaxsw/OpenSTA "$TOOLS/OpenSTA"
   (cd "$TOOLS/OpenSTA" && cmake -B build -DCUDD_DIR="$TOOLS/cudd" && cmake --build build -j"$(nproc)")
