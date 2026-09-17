@@ -19,7 +19,11 @@ from quant import formats  # noqa: E402
 from quant.fakequant import convert_model  # noqa: E402
 from quant.calibrate import calibrate, CALIB_IMAGES, CALIB_STAT  # noqa: E402
 
-_CKPT_PATH = os.path.join(_REPO_ROOT, "models", "checkpoints", "fp32.pt")
+# SEED=n evaluates the matching models/train.py checkpoint (scripts/seed_sweep.sh);
+# seed 0 is the plain fp32.pt the committed table was made from.
+SEED = int(os.environ.get("SEED", 0))
+_CKPT_STEM = "fp32" if SEED == 0 else f"fp32_seed{SEED}"
+_CKPT_PATH = os.path.join(_REPO_ROOT, "models", "checkpoints", f"{_CKPT_STEM}.pt")
 _CSV_PATH = os.path.join(_REPO_ROOT, "results", "accuracy.csv")
 _CSV_COLUMNS = [
     "format", "stage", "top1", "top5",
@@ -60,7 +64,7 @@ def _append_csv(fmt, stage, top1, top5):
         writer.writerow([
             fmt, stage, f"{top1:.4f}", f"{top5:.4f}",
             CALIB_IMAGES, CALIB_STAT, True,
-            "", 0, "models/checkpoints/fp32.pt",
+            "", SEED, f"models/checkpoints/{_CKPT_STEM}.pt",
             datetime.date.today().isoformat(),
         ])
 
@@ -78,7 +82,7 @@ def run_ptq(formats_to_run=formats.FORMAT_IDS, device=None):
     base_model.load_state_dict(torch.load(_CKPT_PATH, map_location="cpu", weights_only=True))
 
     _, test_loader = get_loaders(batch_size=256)
-    calib_batch = get_calibration_subset(n=CALIB_IMAGES, seed=0)
+    calib_batch = get_calibration_subset(n=CALIB_IMAGES, seed=SEED)
 
     results = {}
     for fmt in formats_to_run:
