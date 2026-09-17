@@ -19,7 +19,7 @@ make synth sta    # Yosys + ABC on sky130 HD, then OpenSTA -> results/area.csv, 
 make plot         # results/figures/
 ```
 
-The EDA tools are pinned in `versions.lock` (OSS CAD Suite 2026-09-09, OpenSTA 3.1.0, sky130 `1689ac3f`); `scripts/setup_lane_s_wsl.sh` installs them on Ubuntu or WSL2 and `synth/libs.toml` names the liberty file per machine. Every number below regenerates from these targets.
+The EDA tools are pinned in `versions.lock` (OSS CAD Suite 2026-09-09, OpenSTA 3.1.0, sky130 `1689ac3f`); `scripts/setup_lane_s_wsl.sh` installs them on Ubuntu or WSL2 and `scripts/setup_lane_s_mac.sh` on Apple Silicon, and each ends with the two smoke tests. `synth/libs.toml` names the liberty file per machine. Every number below regenerates from these targets.
 
 ## Results
 

@@ -9,3 +9,6 @@
 [desktop-wsl]
 sky130hd = "$HOME/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"
 # asap7 = "$HOME/tools/asap7/asap7sc7p5t_RVT_TT_merged.lib"
+
+[rias-MacBook-Air]
+sky130hd = "$HOME/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"
