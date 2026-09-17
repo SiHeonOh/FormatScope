@@ -6,7 +6,7 @@ import pytest
 
 from formatscope.cli import main, table_rows
 from formatscope.data import load_points
-from formatscope.pareto import frontier, knee
+from formatscope.pareto import best_per_area, frontier
 from formatscope.recommend import as_percent, best_under_budget, smallest_meeting
 
 ACC_COLS = ["format", "stage", "top1", "top5", "calib_images", "calib_stat",
@@ -70,12 +70,12 @@ def test_frontier_drops_dominated_points(rdir):
     front = [p.format for p in frontier(pts)]
     # mxfp4 (12000, 60.71) is dominated by int4 (8100, 62.0); fp8 by int8
     assert front == ["int4", "int8"]
-    assert knee(pts).format == "int4"
+    assert best_per_area(pts).format == "int4"
 
 
 def test_frontier_empty_and_ties():
     assert frontier([]) == []
-    assert knee([]) is None
+    assert best_per_area([]) is None
 
 
 def test_recommend(rdir):

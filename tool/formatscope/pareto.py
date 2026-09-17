@@ -20,8 +20,12 @@ def frontier(points, stage="ptq"):
     return front
 
 
-def knee(points, stage="ptq"):
-    """Frontier point with the most top-1 accuracy per um^2."""
+def best_per_area(points, stage="ptq"):
+    """Frontier point with the most top-1 accuracy per um^2 (build-plan.md S13).
+
+    Not a curvature knee: with five points that would just be geometry.
+    This is the ratio the plan defines and the CLI labels it as such.
+    """
     front = frontier(points, stage)
     if not front:
         return None

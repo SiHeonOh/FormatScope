@@ -98,19 +98,25 @@ def load_points(rdir, lib="sky130hd", target="t1", align_w=24):
             return True
         return int(row.get("align_w") or 0) == align_w
 
+    # The CSVs are append-only, so a repeated `make synth` writes the same run
+    # index again. The last row per run index wins; it replaces, not stacks.
+    areas, delays = {}, {}
     for row in _read(rdir / "area.csv"):
         if matches(row):
             area = _float(row.get("area_um2"))
             if area and area > 0:
-                p = points[row["format"]]
-                p.areas.append(area)
+                areas[(row["format"], row.get("run", "0"))] = area
                 if row.get("dtarget_ps"):
-                    p.dtarget_ps = _float(row["dtarget_ps"])
+                    points[row["format"]].dtarget_ps = _float(row["dtarget_ps"])
     for row in _read(rdir / "timing.csv"):
         if matches(row):
             delay = _float(row.get("delay_ps"))
             if delay is not None:
-                points[row["format"]].delays.append(delay)
+                delays[(row["format"], row.get("run", "0"))] = delay
+    for (fmt, _run), area in areas.items():
+        points[fmt].areas.append(area)
+    for (fmt, _run), delay in delays.items():
+        points[fmt].delays.append(delay)
     return [points[fmt] for fmt in HARDWARE_FORMATS]
 
 

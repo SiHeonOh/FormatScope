@@ -1,35 +1,19 @@
 #!/usr/bin/env bash
 # FormatScope: one-shot desktop bring-up inside WSL2 Ubuntu -- GPU lane + lane S.
 #
-#   bash scripts/setup_desktop_wsl.sh            # seed from the synced iCloud folder
-#   FORMATSCOPE_SRC=/mnt/c/path/to/FORGE bash ...   # seed from a different folder
-#   FORMATSCOPE_SRC=git bash ...                    # clone from origin instead
-#
-# The Mac's ~/Documents syncs to C:\Users\<you>\iCloudDrive\Documents via
-# Desktop & Documents, so the lane-S work reaches this machine without being
-# pushed. Falls back to a clone if that folder isn't there.
+#   bash scripts/setup_desktop_wsl.sh                # clone from origin
+#   FORMATSCOPE_SRC=/path/to/checkout bash ...       # seed from a local folder instead
 #
 # Copies the project onto the Linux filesystem, builds the venv with a CUDA
 # PyTorch, runs scripts/setup_lane_s_wsl.sh (Yosys + sky130 + OpenSTA), and
 # runs the test suite. Safe to re-run: finished steps are skipped.
 #
-# Why it copies: the iCloud folder is reachable at /mnt/c but the Windows
-# filesystem is ~10x slower under WSL, and two machines syncing one .git
-# concurrently corrupts it. ~/FormatScope is a normal clone with the same
-# origin, so `git pull` / `git push` still work.
+# Why it copies instead of working in place when seeded from /mnt/c: the
+# Windows filesystem is ~10x slower under WSL (build-plan.md risk 12).
+# ~/FormatScope is a normal clone with the same origin, so pull/push work.
 set -euo pipefail
 
-# The WSL username need not match the Windows one, so find the iCloud copy by
-# globbing every Windows profile rather than guessing a name.
-find_icloud() {
-  local p
-  for p in /mnt/c/Users/*/iCloudDrive/Documents/Projects/FORGE; do
-    [ -d "$p" ] && { printf '%s' "$p"; return 0; }
-  done
-  return 1
-}
-SRC="${FORMATSCOPE_SRC:-}"
-[ -n "$SRC" ] || SRC="$(find_icloud || echo git)"
+SRC="${FORMATSCOPE_SRC:-git}"
 REPO="${FORMATSCOPE_REPO_DIR:-$HOME/FormatScope}"
 REPO_URL="${FORMATSCOPE_REPO_URL:-https://github.com/SiHeonOh/FormatScope.git}"
 export FORMATSCOPE_MACHINE="${FORMATSCOPE_MACHINE:-desktop-wsl}"
@@ -55,11 +39,10 @@ elif [ "$SRC" = "git" ]; then
   git clone "$REPO_URL" "$REPO"
 elif [ -d "$SRC" ]; then
   echo "seeding from $SRC"
-  # iCloud on Windows can keep files online-only; a dataless file reads as
+  # A cloud-synced folder can hold online-only placeholders that read as
   # empty rather than failing, so check a known file has real bytes first.
   if [ ! -s "$SRC/quant/formats.py" ]; then
-    echo "$SRC/quant/formats.py is empty or missing -- the iCloud folder may not be downloaded." >&2
-    echo "In Windows Explorer: right-click the FORGE folder -> 'Always keep on this device', wait for it to finish, then re-run." >&2
+    echo "$SRC/quant/formats.py is empty or missing -- is the source folder fully downloaded?" >&2
     exit 1
   fi
   rsync -a --exclude '.venv' --exclude '__pycache__' --exclude '.pytest_cache' \

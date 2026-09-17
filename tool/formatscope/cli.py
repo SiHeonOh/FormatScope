@@ -6,7 +6,7 @@ import sys
 
 from formatscope import ALL_FORMATS, BITS_PER_NUMBER, TARGETS
 from formatscope.data import _REPO_ROOT, fp32_top1, load_accuracy, load_points, results_dir
-from formatscope.pareto import frontier, knee
+from formatscope.pareto import best_per_area, frontier
 from formatscope.recommend import DEFAULT_MARGIN, as_percent, best_under_budget, smallest_meeting
 
 
@@ -28,9 +28,9 @@ def cmd_run(args):
     for target in TARGETS:
         points = load_points(rdir, args.lib, target, args.align_w)
         front = frontier(points, args.stage)
-        k = knee(points, args.stage)
+        k = best_per_area(points, args.stage)
         print(f"[{args.lib} {target}] frontier: {', '.join(p.format for p in front) or 'no measured points'}"
-              + (f"; knee {k.format}" if k else ""))
+              + (f"; best accuracy per µm² {k.format}" if k else ""))
     return 0
 
 
