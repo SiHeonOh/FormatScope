@@ -207,8 +207,11 @@ def test_templates_render_every_placeholder(template):
     assert "chparam -set ALIGN_W 24 dp32_fp8e4m3" in rendered
     assert "abc -liberty /pdk/sky130.lib -D 4000" in rendered
     assert "stat -json -liberty /pdk/sky130.lib" in rendered
-    flatten = "synth -top dp32_fp8e4m3 -flatten" in rendered
+    flatten = "synth -top dp32_fp8e4m3 -flatten -noalumacc" in rendered
     assert flatten == (template == "synth_flat.ys.template")
+    # Both flows keep the multipliers and the tree out of a single $macc, so
+    # ABC maps them separately (equal or smaller netlists, seconds not minutes).
+    assert "-noalumacc" in rendered
     with pytest.raises(ValueError, match="SOURCES"):
         rs.render(text, {k: v for k, v in fields.items() if k != "SOURCES"})
 
