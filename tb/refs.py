@@ -14,7 +14,10 @@ from quant import formats
 BLOCK = formats.BLOCK_SIZE
 ACC_MASK = (1 << 32) - 1
 FP32_BIAS = 127
-EXP_W = 10                              # signed exponent width inside the fused stage
+FP32_EMAX = 127                         # largest unbiased exponent of a normal FP32 value
+FP32_EMIN = -126                        # smallest
+FP32_MAX_FINITE = 0x7F7FFFFF
+EXP_W = 10                             # signed exponent width inside the fused stage
 EXP_FLOOR = -(1 << (EXP_W - 1))         # exponent given to zero terms in the max
 
 
@@ -111,6 +114,9 @@ def fused_stage(terms, acc_bits, align_w, n_prod, info=None):
     """
     if len(terms) != n_prod or n_prod & (n_prod - 1):
         raise ValueError(f"need a power-of-two number of terms, got {len(terms)} for n_prod={n_prod}")
+    # Plain Python ints throughout: numpy integers would overflow the shifts below.
+    terms = [tuple(int(x) for x in term) for term in terms]
+    acc_bits = int(acc_bits)
     ww = align_w + 2
     k = clog2(n_prod)
     mag_w = ww + 1 + k
@@ -143,7 +149,8 @@ def fused_stage(terms, acc_bits, align_w, n_prod, info=None):
 
     if info is not None:
         info.update(t_max=t_max, term_sticky=term_sticky, zero=total == 0,
-                    guard=0, round=0, rest_sticky=False, increment=False, overflow=False)
+                    guard=0, round=0, rest_sticky=False, increment=False, overflow=False,
+                    saturate=False, underflow=False)
     if total == 0:
         return 0
 
@@ -168,14 +175,18 @@ def fused_stage(terms, acc_bits, align_w, n_prod, info=None):
         sig >>= 1
         e += 1
 
-    # 8. Pack.
-    eb = e + FP32_BIAS
-    if not 1 <= eb <= 254:
-        raise AssertionError(f"result exponent {e} outside FP32 normal range")
+    # 8. Pack. Out of FP32's normal range: saturate to the largest finite value,
+    # or return +0 below the smallest normal (no infinities, no subnormals).
+    saturate = e > FP32_EMAX
+    underflow = e < FP32_EMIN
     if info is not None:
         info.update(guard=guard, round=rnd, rest_sticky=rest_sticky,
-                    increment=increment, overflow=overflow)
-    return (neg << 31) | (eb << 23) | (sig & 0x7FFFFF)
+                    increment=increment, overflow=overflow, saturate=saturate, underflow=underflow)
+    if underflow:
+        return 0
+    if saturate:
+        return (neg << 31) | FP32_MAX_FINITE
+    return (neg << 31) | ((e + FP32_BIAS) << 23) | (sig & 0x7FFFFF)
 
 
 def fp8_terms(a_codes, b_codes):
@@ -204,3 +215,67 @@ def fp8_product_sum(a_codes, b_codes):
     terms, _ = fp8_terms(a_codes, b_codes)
     return sum((Fraction(-mag if sign else mag) * Fraction(2) ** (t - sig_w)
                 for sign, t, mag, sig_w in terms), Fraction(0))
+
+
+# ---------------------------------------------------------------------------
+# MX units (S5.6, S5.7): exact integer block sum, then a normalized block term
+# into the fused stage with n_prod = 1.
+# ---------------------------------------------------------------------------
+
+# Per format: element width, magnitude field width of the block sum, and the
+# offset in value = S * 2^(scale_a + scale_b - offset).
+#   mxint8: elements are code/64 -> products carry 2^-12; offset = 254 + 12.
+#   mxfp4:  mag = element * 2    -> products carry 2^-2;  offset = 254 + 2.
+MX = {
+    "mxint8": {"w": 8, "sig_w": 20, "offset": 266},
+    "mxfp4": {"w": 4, "sig_w": 13, "offset": 256},
+}
+
+
+def mx_block_sum(fmt, a_codes, b_codes):
+    """Exact signed integer block sum S of the element products."""
+    w = MX[fmt]["w"]
+    a, b = _codes(a_codes, w), _codes(b_codes, w)
+    if fmt == "mxint8":
+        av = formats._int_code_to_value(a, 8).astype(np.int64)
+        bv = formats._int_code_to_value(b, 8).astype(np.int64)
+        return int(np.dot(av, bv))
+    total = 0
+    for ca, cb in zip(a, b):
+        sa, ma = decode_e2m1(int(ca))
+        sb, mb = decode_e2m1(int(cb))
+        total += -(ma * mb) if sa ^ sb else ma * mb
+    return total
+
+
+def mx_block_term(fmt, block_sum, scale_a, scale_b):
+    """(term, nan): the normalized (sign, t, mag, sig_w) term for one block.
+
+    The block sum is normalized (one leading-zero count) so the fused stage's
+    window starts at its leading one; a NaN scale makes the term zero (D4).
+    """
+    sig_w, offset = MX[fmt]["sig_w"], MX[fmt]["offset"]
+    ea, nan_a = decode_e8m0(int(scale_a))
+    eb, nan_b = decode_e8m0(int(scale_b))
+    nan = nan_a or nan_b
+    mag = abs(block_sum)
+    if not mag < (1 << sig_w):
+        raise ValueError(f"{fmt} block sum {block_sum} exceeds {sig_w} bits")
+    if nan or mag == 0:
+        return (0, 0, 0, sig_w), nan
+    lz = sig_w - mag.bit_length()
+    return (int(block_sum < 0), ea + eb - offset + sig_w - lz, mag << lz, sig_w), nan
+
+
+def dp32_mx(fmt, a_codes, b_codes, scale_a, scale_b, acc_bits, align_w, info=None):
+    """MXINT8 / MXFP4 DP32: (new register value, NaN scale seen this accumulation)."""
+    term, nan = mx_block_term(fmt, mx_block_sum(fmt, a_codes, b_codes), scale_a, scale_b)
+    return fused_stage([term], acc_bits, align_w, 1, info), nan
+
+
+def mx_block_value(fmt, a_codes, b_codes, scale_a, scale_b):
+    """Exact block value as a Fraction (zero for a NaN scale), for checking the reference."""
+    scale_a, scale_b = int(scale_a), int(scale_b)
+    if scale_a == 0xFF or scale_b == 0xFF:
+        return Fraction(0)
+    return Fraction(mx_block_sum(fmt, a_codes, b_codes)) * Fraction(2) ** (scale_a + scale_b - MX[fmt]["offset"])
