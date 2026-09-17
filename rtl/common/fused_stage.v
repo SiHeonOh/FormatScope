@@ -148,6 +148,8 @@ module normacc_stage_fused #(
   localparam LZ_W   = $clog2(MAG_W + 1);
   localparam [EXP_W-1:0] K_E    = K;
   localparam [EXP_W-1:0] BIAS_E = 127;
+  localparam [EXP_W-1:0] EMAX_E = 127;      // largest normal FP32 exponent
+  localparam [EXP_W-1:0] EMIN_E = -126;     // smallest
 
   // Step 6.
   wire             neg = sum[SUM_W-1];
@@ -171,9 +173,48 @@ module normacc_stage_fused #(
   wire [EXP_W-1:0] lz_e   = {{(EXP_W-LZ_W){1'b0}}, lz};
   wire [EXP_W-1:0] e      = t_max + K_E - lz_e + {{(EXP_W-1){1'b0}}, ovf};   // unbiased
 
-  // Step 8.
-  wire [EXP_W-1:0] eb = e + BIAS_E;
-  assign acc_next = (mag == {MAG_W{1'b0}}) ? 32'd0 : {neg, eb[7:0], frac};
+  // Step 8. Outside FP32's normal range (reachable only with extreme MX scales):
+  // saturate to the largest finite value, or return +0 below the smallest normal.
+  wire [EXP_W-1:0] eb        = e + BIAS_E;
+  wire             saturate  = $signed(e) > $signed(EMAX_E);
+  wire             underflow = $signed(e) < $signed(EMIN_E);
+  assign acc_next = (mag == {MAG_W{1'b0}} || underflow) ? 32'd0
+                  : saturate ? {neg, 31'h7F7FFFFF}
+                  : {neg, eb[7:0], frac};
+endmodule
+
+// MX front of the fused stage (S5.6, S5.7): turn the exact signed block sum and
+// the two E8M0 scale exponents into one normalized term, so the window starts at
+// the block sum's leading one instead of at the top of its field.
+//   block value = S * 2^(exp_a + exp_b - OFFSET)
+//   term: mag = |S| << lz, T = exp_a + exp_b - OFFSET + SIG_W - lz
+module align_stage_mxnorm #(
+  parameter SUM_W  = 21,      // signed block sum width; |S| < 2^(SUM_W-1)
+  parameter EXP_W  = 10,
+  parameter OFFSET = 266      // 254 (two E8M0 biases) + the elements' implicit scale
+) (
+  input  wire [SUM_W-1:0] block_sum,
+  input  wire [7:0]       exp_a,
+  input  wire [7:0]       exp_b,
+  input  wire             force_zero,   // a NaN scale: the block contributes nothing (D4)
+  output wire             sign,
+  output wire [EXP_W-1:0] t,
+  output wire [SUM_W-2:0] mag
+);
+  localparam SIG_W = SUM_W - 1;
+  localparam LZ_W  = $clog2(SIG_W + 1);
+  localparam [EXP_W-1:0] T_OFFSET = OFFSET - SIG_W;
+
+  wire             neg     = block_sum[SUM_W-1];
+  wire [SUM_W-1:0] abs_sum = neg ? (~block_sum + 1'b1) : block_sum;
+  wire [SIG_W-1:0] raw     = abs_sum[SIG_W-1:0];
+  wire [LZ_W-1:0]  lz;
+  lzc #(.W(SIG_W)) u_lzc (.in(raw), .count(lz));
+
+  wire [8:0] es = {1'b0, exp_a} + {1'b0, exp_b};
+  assign sign = neg;
+  assign mag  = force_zero ? {SIG_W{1'b0}} : (raw << lz);
+  assign t    = {{(EXP_W-9){1'b0}}, es} - T_OFFSET - {{(EXP_W-LZ_W){1'b0}}, lz};
 endmodule
 
 module fused_stage #(
