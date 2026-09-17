@@ -201,11 +201,15 @@ def test_jobs_perturbation_and_window_rules():
 def test_templates_render_every_placeholder(template):
     text = (rs.SYNTH_DIR / template).read_text()
     fields = rs.synth_fields("/pdk/sky130.lib", rs.SOURCES["fp8e4m3"], "dp32_fp8e4m3",
-                             "-D 4000", "synth/out/x", 24)
+                             "-D 4000", "synth/out/x", 24, constr="/pdk/abc.constr")
     rendered = rs.render(text, fields)
     assert not re.search(r"\{[A-Z_]+\}", rendered)
     assert "chparam -set ALIGN_W 24 dp32_fp8e4m3" in rendered
-    assert "abc -liberty /pdk/sky130.lib -D 4000" in rendered
+    # -D is only picoseconds when ABC reads the liberty itself, which -constr triggers.
+    assert "abc -liberty /pdk/sky130.lib -constr /pdk/abc.constr -D 4000" in rendered
+    with pytest.raises(ValueError, match="constraint file"):
+        rs.synth_fields("/pdk/sky130.lib", rs.SOURCES["int8"], "dp32_int8", "-D 4000", "synth/out/x")
+    assert rs.abc_constr_path("sky130hd") is not None, "synth/abc_sky130hd.constr must exist"
     assert "stat -json -liberty /pdk/sky130.lib" in rendered
     flatten = "synth -top dp32_fp8e4m3 -flatten -noalumacc" in rendered
     assert flatten == (template == "synth_flat.ys.template")
@@ -248,7 +252,9 @@ def test_dry_run_renders_without_yosys(tmp_path, monkeypatch, capsys):
     assert "sky130hd_int8_unc_a24_r0.ys" in out
     script = (tmp_path / "synth/out/sky130hd_int8_unc_a24_r0.ys").read_text()
     assert "read_verilog -sv rtl/common/adder_tree.v rtl/int8/dp32_int8.v" in script
-    assert "abc -liberty /nonexistent/sky130.lib \n" in script  # no -D on unc
+    abc_line = next(line for line in script.splitlines() if line.startswith("abc "))
+    assert abc_line.startswith("abc -liberty /nonexistent/sky130.lib")
+    assert " -D " not in abc_line  # no delay target on the unconstrained run
 
 
 def test_t1_before_targets_are_set_is_a_clear_error(tmp_path):

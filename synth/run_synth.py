@@ -153,14 +153,25 @@ def out_stem(lib_id, fmt, target, align_w, run):
     return f"{lib_id}_{fmt}_{target}_a{align_w}_r{run}"
 
 
-def synth_fields(lib_path, sources, top, dtarget, out_prefix, align_w=None):
+def abc_constr_path(lib_id):
+    """The ABC constraint file for a library (driving cell and output load), or None."""
+    path = SYNTH_DIR / f"abc_{lib_id}.constr"
+    return path if path.exists() else None
+
+
+def synth_fields(lib_path, sources, top, dtarget, out_prefix, align_w=None, constr=None):
     chparam = (f"chparam -set ALIGN_W {align_w} {top}" if align_w is not None
                else "# no ALIGN_W parameter on this unit")
+    if dtarget and not constr:
+        # Without -constr Yosys gives ABC a genlib with unit gate delays, so a
+        # -D target counts logic levels and any value above the depth does nothing.
+        raise ValueError("a delay target needs an ABC constraint file (synth/abc_<lib>.constr)")
     return {
         "LIB": lib_path,
         "SOURCES": " ".join(sources),
         "TOP": top,
         "CHPARAM": chparam,
+        "ABC_CONSTR": f" -constr {constr}" if constr else "",
         "DTARGET": dtarget,
         "OUT": out_prefix,
     }
@@ -444,7 +455,8 @@ def synth_units(args):
         top = top_name(fmt)
         out_prefix = f"{out_sub}/{out_stem(args.lib, fmt, target, align_w, run)}"
         fields = synth_fields(lib_path, sources, top, dtarget_arg(target, dtarget_ps),
-                              out_prefix, align_w if fmt in ALIGNED_FORMATS else None)
+                              out_prefix, align_w if fmt in ALIGNED_FORMATS else None,
+                              constr=abc_constr_path(args.lib))
         started = time.monotonic()
         run_yosys(render(template, fields), ROOT / out_prefix, args.dry_run)
         elapsed = time.monotonic() - started

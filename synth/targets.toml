@@ -4,14 +4,13 @@
 # timing.csv row that is period_ps - wns_ps (arrival + setup), so the unit
 # meets its own T1 instead of missing it by the setup time. Set once, then
 # never change without re-running every synthesis. Values are picoseconds.
-#
-# The values below were derived before -noalumacc went into the synth
-# templates and from arrival alone; re-derive them after the re-run.
 
 [sky130hd]
-# Slowest unconstrained unit: fp8e4m3 a24, 48889 ps (OpenSTA 3.1.0, 2026-09-17).
-t1_ps = 48900
-t2_ps = 34230
+# Slowest unconstrained unit: fp8e4m3 at ALIGN_W 32, arrival 35384 ps, WNS
+# -25470 ps at a 10 ns period (OpenSTA 3.1.0, -noalumacc + -constr flow,
+# 2026-09-17): 10000 + 25470 = 35470 -> 35500. T2 = 0.7 x T1.
+t1_ps = 35500
+t2_ps = 24850
 
 [asap7]
 # t1_ps = 0
