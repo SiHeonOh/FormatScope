@@ -7,3 +7,8 @@ mxint8,ptq,86.3900,99.4600,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09
 mxfp4,ptq,60.7100,97.3700,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
 int4_b32,ptq,78.4600,98.5100,512,p99.99,True,,0,models/checkpoints/fp32.pt,2026-09-12
 int4,qat,81.3600,99.1500,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
+mxfp4,qat,82.7900,99.1700,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
+int8,qat,86.0300,99.5500,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
+fp8e4m3,qat,85.7800,99.4800,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
+mxint8,qat,86.1900,99.3700,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
+int4_b32,qat,83.2100,99.2600,512,p99.99,True,5,0,models/checkpoints/fp32.pt,2026-09-17
