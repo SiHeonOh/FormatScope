@@ -226,19 +226,25 @@ def fp8_product_sum(a_codes, b_codes):
 # offset in value = S * 2^(scale_a + scale_b - offset).
 #   mxint8: elements are code/64 -> products carry 2^-12; offset = 254 + 12.
 #   mxfp4:  mag = element * 2    -> products carry 2^-2;  offset = 254 + 2.
+#   int4_b32: elements are plain INT4 integers            -> offset = 254.
+#     formats.py keeps this format's block scale as a raw exponent e; the
+#     hardware carries it as E8M0 (code = e + 127), the same as the MX units.
+#     |S| <= 32 * (-8)^2 = 2^11, so the magnitude needs 12 bits.
 MX = {
     "mxint8": {"w": 8, "sig_w": 20, "offset": 266},
     "mxfp4": {"w": 4, "sig_w": 13, "offset": 256},
+    "int4_b32": {"w": 4, "sig_w": 12, "offset": 254},
 }
+MX_INT_ELEMENTS = ("mxint8", "int4_b32")    # two's-complement elements; mxfp4 is E2M1
 
 
 def mx_block_sum(fmt, a_codes, b_codes):
     """Exact signed integer block sum S of the element products."""
     w = MX[fmt]["w"]
     a, b = _codes(a_codes, w), _codes(b_codes, w)
-    if fmt == "mxint8":
-        av = formats._int_code_to_value(a, 8).astype(np.int64)
-        bv = formats._int_code_to_value(b, 8).astype(np.int64)
+    if fmt in MX_INT_ELEMENTS:
+        av = formats._int_code_to_value(a, w).astype(np.int64)
+        bv = formats._int_code_to_value(b, w).astype(np.int64)
         return int(np.dot(av, bv))
     total = 0
     for ca, cb in zip(a, b):
@@ -268,7 +274,7 @@ def mx_block_term(fmt, block_sum, scale_a, scale_b):
 
 
 def dp32_mx(fmt, a_codes, b_codes, scale_a, scale_b, acc_bits, align_w, info=None):
-    """MXINT8 / MXFP4 DP32: (new register value, NaN scale seen this accumulation)."""
+    """MXINT8 / MXFP4 / INT4-b32 DP32: (new register value, NaN scale seen this accumulation)."""
     term, nan = mx_block_term(fmt, mx_block_sum(fmt, a_codes, b_codes), scale_a, scale_b)
     return fused_stage([term], acc_bits, align_w, 1, info), nan
 

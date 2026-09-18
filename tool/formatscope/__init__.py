@@ -1,7 +1,10 @@
 """FormatScope: join quantized accuracy with DP32 area and delay (build-plan.md S8)."""
 
-HARDWARE_FORMATS = ["int4", "int8", "fp8e4m3", "mxint8", "mxfp4"]
-ALL_FORMATS = HARDWARE_FORMATS + ["int4_b32"]
+# int4_b32 (INT4 elements, block-32 power-of-two scale) has a unit too:
+# rtl/int4_b32/, the MXINT8 design at 4 bits. Until its area rows exist it shows
+# as accuracy-only, exactly as before.
+HARDWARE_FORMATS = ["int4", "int8", "fp8e4m3", "mxint8", "mxfp4", "int4_b32"]
+ALL_FORMATS = list(HARDWARE_FORMATS)
 # Each unit at its own fastest mapping and at the shared clock T1. There is no
 # T2: no period tighter than T1 constrains both the INT and the fused units
 # (build-plan.md D7).

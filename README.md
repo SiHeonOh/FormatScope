@@ -35,7 +35,7 @@ sky130 HD, typical corner, pre-layout. `unc` is each unit's fastest mapping; `T1
 | mxfp4 | 4.25 | 60.71 | — | 35,967 | 35,294 | 26,451 | 31,201 |
 | int4_b32 | 4.25 | 78.46 | — | — | — | — | — |
 
-"Bits per number" amortizes the 8-bit shared scale of the block-32 formats over the block. `int4_b32` (INT4 elements with a block-32 power-of-two scale) is an accuracy-only configuration with no hardware unit; it separates how much of MXFP4's behaviour comes from block scaling and how much from the E2M1 encoding.
+"Bits per number" amortizes the 8-bit shared scale of the block-32 formats over the block. `int4_b32` (INT4 elements with a block-32 power-of-two scale) separates how much of MXFP4's behaviour comes from block scaling and how much from the E2M1 encoding. It has a verified unit too (`rtl/int4_b32/`, the MXINT8 design at 4 bits, decision A1); its area and timing rows come from `make synth sta FMT=int4_b32` and are not in this table yet.
 
 Verification: every unit passes 10,000 seeded random vectors plus directed corners against a NumPy reference (`make test`); every decoder is tested over all of its codes; and one real layer's dot products pushed through the PyTorch path and the hardware reference agree bit-exactly for the INT and MX formats (`results/fidelity.csv`). CI runs the decoders and a 300-vector subset on every push.
 

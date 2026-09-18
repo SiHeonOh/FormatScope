@@ -18,8 +18,10 @@ COLORS = {
     "fp8e4m3": "#7570b3",
     "mxint8": "#e7298a",
     "mxfp4": "#66a61e",
+    "int4_b32": "#e6ab02",
 }
-LABELS = {"int4": "INT4", "int8": "INT8", "fp8e4m3": "FP8-E4M3", "mxint8": "MXINT8", "mxfp4": "MXFP4"}
+LABELS = {"int4": "INT4", "int8": "INT8", "fp8e4m3": "FP8-E4M3", "mxint8": "MXINT8", "mxfp4": "MXFP4",
+          "int4_b32": "INT4-b32"}
 STAGES = ["decode", "mul", "align", "tree", "normacc", "other"]
 TARGET_TITLES = {"unc": "unconstrained", "t1": "T1", "t2": "T2"}
 
@@ -111,7 +113,7 @@ def breakdown_figure(rdir, out_dir, lib="sky130hd", target="unc", align_w=24):
 
 
 def window_sweep_figure(rdir, out_dir, lib="sky130hd", target="unc"):
-    formats = ["fp8e4m3", "mxint8", "mxfp4"]
+    formats = ["fp8e4m3", "mxint8", "mxfp4", "int4_b32"]
     by_w = {w: {p.format: p.area for p in load_points(rdir, lib, target, w)} for w in (24, 32)}
     present = [f for f in formats if by_w[24].get(f) and by_w[32].get(f)]
     if not present:
