@@ -133,5 +133,6 @@ def table_png(rows, header, out_dir):
     tbl = ax.table(cellText=rows, colLabels=header, loc="center", cellLoc="center")
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(12)
+    tbl.auto_set_column_width(col=list(range(len(header))))  # else long headers clip
     tbl.scale(1, 1.5)
     return _save(fig, out_dir, "results_table")
