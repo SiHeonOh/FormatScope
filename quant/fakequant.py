@@ -52,7 +52,7 @@ class _STEElementwise(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, x, fmt, scale_np):
-        x_np = x.detach().cpu().double().numpy()
+        x_np = x.detach().cpu().numpy()
         codes = formats.encode(fmt, x_np, scale_np)
         recon = formats.decode(fmt, codes, scale_np)
         bound_np = _ELEMENT_MAX[fmt] * np.broadcast_to(scale_np, x_np.shape)
@@ -76,7 +76,7 @@ class _STEBlock(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, x, fmt):
-        x_np = x.detach().cpu().double().numpy()
+        x_np = x.detach().cpu().numpy()
         codes, scale = formats.quantize(fmt, x_np)
         recon = formats.dequantize(fmt, codes, scale).reshape(x_np.shape)
         scale_pow2 = _block_scale_pow2(scale, fmt)
@@ -125,14 +125,14 @@ class QConv2d(nn.Module):
             return self._forward_block(x)
 
         out_ch = self.weight.shape[0]
-        w_np = self.weight.detach().cpu().double().numpy()
+        w_np = self.weight.detach().cpu().numpy()
         w_scale = _elementwise_scale(w_np.reshape(out_ch, -1), self.fmt, axis=1).reshape(out_ch, 1, 1, 1)
         qw = _fake_quant_elementwise(self.weight, self.fmt, w_scale)
 
         if self._act_scale is not None:
             a_scale = self._act_scale
         else:
-            a_scale = _elementwise_scale(x.detach().cpu().double().numpy(), self.fmt, axis=None)
+            a_scale = _elementwise_scale(x.detach().cpu().numpy(), self.fmt, axis=None)
         qx = _fake_quant_elementwise(x, self.fmt, a_scale)
 
         return F.conv2d(qx, qw, self.bias, self.stride, self.padding, self.dilation, self.groups)
@@ -175,14 +175,14 @@ class QLinear(nn.Module):
             qw = _fake_quant_block(wp, self.fmt)
             return F.linear(qx, qw, self.bias)
 
-        w_np = self.weight.detach().cpu().double().numpy()
+        w_np = self.weight.detach().cpu().numpy()
         w_scale = _elementwise_scale(w_np, self.fmt, axis=1)
         qw = _fake_quant_elementwise(self.weight, self.fmt, w_scale)
 
         if self._act_scale is not None:
             a_scale = self._act_scale
         else:
-            a_scale = _elementwise_scale(x.detach().cpu().double().numpy(), self.fmt, axis=None)
+            a_scale = _elementwise_scale(x.detach().cpu().numpy(), self.fmt, axis=None)
         qx = _fake_quant_elementwise(x, self.fmt, a_scale)
 
         return F.linear(qx, qw, self.bias)
