@@ -166,7 +166,17 @@ def build_parser():
     return parser
 
 
+def _utf8_stdio():
+    # The output has µ, ² and — in it. A Windows console on a legacy code page
+    # (cp949, cp932, ...) cannot encode them and print() raises. A no-op wherever
+    # stdout is already UTF-8, and skipped if stdout has been replaced.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
 def main(argv=None):
+    _utf8_stdio()
     args = build_parser().parse_args(argv)
     return args.func(args)
 

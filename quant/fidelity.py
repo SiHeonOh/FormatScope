@@ -2,7 +2,7 @@
 
 Layer: block2.conv1 (16->32 channels, stride 2), the "recommended" layer in
 S4.7 -- reduction length in_ch*kh*kw = 16*3*3 = 144 = 4.5 blocks, padded to 5.
-int4_b32 has no hardware unit (S1.3) so it is excluded here.
+int4_b32 is included: it has a hardware unit too (rtl/int4_b32/, decision A1).
 
 Path (a), "PyTorch": dequantize both operands once and accumulate the whole
 144(->160)-element dot product in FP32, exactly like fakequant.py does.
