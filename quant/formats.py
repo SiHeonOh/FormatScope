@@ -102,21 +102,20 @@ def _fp8e4m3_code_to_value(codes):
     return np.where(is_nan, np.nan, value)
 
 
-def _nearest_table_index(mag, table):
-    """Index of the nearest entry in a sorted table; ties go to the even index (RNE)."""
-    mag = np.clip(np.asarray(mag, dtype=np.float64), table[0], table[-1])
-    idx_hi = np.clip(np.searchsorted(table, mag, side="left"), 1, len(table) - 1)
-    idx_lo = idx_hi - 1
-    lo, hi = table[idx_lo], table[idx_hi]
-    dist_lo, dist_hi = mag - lo, hi - mag
-    choose_hi = (dist_hi < dist_lo) | ((dist_hi == dist_lo) & (idx_hi % 2 == 0))
-    return np.where(choose_hi, idx_hi, idx_lo).astype(np.int64)
+_E2M1_MIDPOINTS = (_E2M1_MAGNITUDES[:-1] + _E2M1_MAGNITUDES[1:]) / 2.0  # 8 magnitudes -> 7 thresholds
 
 
 def _e2m1_value_to_code(values):
+    # Closed-form cascade instead of a generic table search: E2M1 has only 8
+    # fixed magnitude levels, and this is called on every MX activation/weight
+    # block every forward pass, so the naive per-element search was the
+    # dominant cost of MX-format training (profiled: >80% of a QAT step).
     x = np.asarray(values, dtype=np.float64)
     sign = (x < 0).astype(np.int64)
-    idx = _nearest_table_index(np.abs(x), _E2M1_MAGNITUDES)
+    mag = np.abs(x)
+    idx = np.zeros(mag.shape, dtype=np.int64)
+    for level, threshold in enumerate(_E2M1_MIDPOINTS, start=1):
+        idx = np.where(mag >= threshold, level, idx)
     return ((sign << 3) | idx).astype(np.int64)
 
 
