@@ -1,8 +1,12 @@
-"""MXINT8 and MXFP4 DP32 units against tb/refs.py at ALIGN_W 24 and 32 (build-plan.md S5.6, S5.7, S6.4).
+"""MXINT8, MXFP4, and INT4-b32 DP32 units against tb/refs.py at ALIGN_W 24 and 32
+(build-plan.md S5.6, S5.7, S6.4).
 
 Same approach as the FP8 tests: every cycle is checked against the reference,
 and every constructed corner first asserts in Python that the reference takes
 the path the corner is named after.
+
+INT4-b32 (INT4 elements, one power-of-two scale per block) is the MXINT8 unit at
+4 bits; it runs the same four tests with its own element codes and block sums.
 """
 
 import os
@@ -25,7 +29,13 @@ COMMON = ["rtl/common/adder_tree.v", "rtl/common/lzc.v", "rtl/common/fused_stage
 SOURCES = {
     "mxint8": COMMON + ["rtl/mxint8/dp32_mxint8.v"],
     "mxfp4": COMMON + ["rtl/common/decode_e2m1.v", "rtl/mxfp4/dp32_mxfp4.v"],
+    "int4_b32": COMMON + ["rtl/int4_b32/dp32_int4_b32.v"],
 }
+# Widths of the pieces, most significant first, that the rounding test tiles into
+# one 24-bit significand. Each piece must be a reachable nonnegative block sum:
+# MXINT8 reaches 32 * 127^2, MXFP4 32 * 144, INT4-b32 only 32 * 49 = 1568, so it
+# needs three 8-bit pieces where the others need two.
+ROUNDING_PIECES = {"mxint8": (14, 10), "mxfp4": (12, 12), "int4_b32": (8, 8, 8)}
 
 N = refs.BLOCK
 NAN_SCALE = 0xFF
@@ -46,13 +56,14 @@ def block_with_sum(fmt, s):
     """(a, b) codes whose block sum is exactly s >= 0."""
     a, b = [0] * N, [0] * N
     lane = 0
-    if fmt == "mxint8":
-        while s >= 127 * 127:
-            a[lane], b[lane] = 127, 127
-            s -= 127 * 127
+    if fmt in refs.MX_INT_ELEMENTS:
+        qmax = (1 << (refs.MX[fmt]["w"] - 1)) - 1          # +127 / +7
+        while s >= qmax * qmax:
+            a[lane], b[lane] = qmax, qmax
+            s -= qmax * qmax
             lane += 1
-        q, r = divmod(s, 127)
-        for x, y in ((127, q), (r, 1)):
+        q, r = divmod(s, qmax)
+        for x, y in ((qmax, q), (r, 1)):
             if y and x:
                 a[lane], b[lane] = x, y
                 lane += 1
@@ -174,6 +185,8 @@ async def dp32_mx_corners(dut):
     await h.start()
     if h.fmt == "mxint8":
         pos_max, neg_max, minus_one = 0x7F, 0x80, 0xFF
+    elif h.fmt == "int4_b32":
+        pos_max, neg_max, minus_one = 0x7, 0x8, 0xF          # +7, -8, -1
     else:
         pos_max, neg_max, minus_one = 0x7, 0xF, 0x9          # +6, -6, -0.5
     zeros = [0] * N
@@ -189,10 +202,11 @@ async def dp32_mx_corners(dut):
         ("scale 0 with scale 254", [pos_max] * N, [pos_max] * N, 0, 254),
         ("scale 254 with scale 0", [neg_max] * N, [pos_max] * N, 254, 0),
     ]
-    if h.fmt == "mxint8":
-        # The alternating case above does not cancel for INT8 (+127 vs -128); make one that does.
+    if h.fmt in refs.MX_INT_ELEMENTS:
+        # The alternating case above does not cancel for two's complement (+127 vs -128,
+        # +7 vs -8); make one that does.
         cases.append(("exact cancellation", [pos_max] * N,
-                      [1 if i % 2 == 0 else 0xFF for i in range(N)], UNIT, UNIT))
+                      [1 if i % 2 == 0 else minus_one for i in range(N)], UNIT, UNIT))
     for label, a, b, sa, sb in cases:
         await h.step(a, b, sa, sb, label=label)
         await h.step(a, b, sa, sb, clear=1, label=f"clear after {label}")
@@ -228,18 +242,24 @@ async def dp32_mx_corners(dut):
 
 @cocotb.test()
 async def dp32_mx_rounding(dut):
-    """A 24-bit significand of all ones (or ending in 0) built from two blocks, then one small block."""
+    """A 24-bit significand of all ones (or ending in 0) built from a few blocks, then one small block."""
     h = Harness(dut)
     await h.start()
     fmt = h.fmt
-    # Block sums whose bits tile 24 bits: high part at 2^(x+low_bits), low part at 2^x.
-    low_bits = 10 if fmt == "mxint8" else 12
-    high = (1 << (24 - low_bits)) - 1
+    # Block sums whose bits tile 24 bits: all-ones pieces, the lowest one at 2^x.
+    widths = ROUNDING_PIECES[fmt]
+    assert sum(widths) == 24
+    low_bits = widths[-1]
     x = -20
 
     async def build(low, label):
         await h.step([0] * N, [0] * N, clear=1, label=f"clear before {label}")
-        for s, e in ((high, x + low_bits), (low, x)):
+        pieces, e = [], x + 24
+        for width in widths[:-1]:
+            e -= width
+            pieces.append(((1 << width) - 1, e))
+        pieces.append((low, x))
+        for s, e in pieces:
             a, b = block_with_sum(fmt, s)
             sa, sb = scales_for(fmt, e)
             _, _, info = h.predict(a, b, sa, sb)
@@ -311,8 +331,13 @@ def test_mxfp4(align_w):
     _run("mxfp4", align_w, N_VEC_CI)
 
 
+@pytest.mark.parametrize("align_w", ALIGN_WS)
+def test_int4_b32(align_w):
+    _run("int4_b32", align_w, N_VEC_CI)
+
+
 @pytest.mark.slow
-@pytest.mark.parametrize("fmt", ["mxint8", "mxfp4"])
+@pytest.mark.parametrize("fmt", ["mxint8", "mxfp4", "int4_b32"])
 @pytest.mark.parametrize("align_w", ALIGN_WS)
 def test_dp32_mx_full(fmt, align_w):
     _run(fmt, align_w, N_VEC_FULL)

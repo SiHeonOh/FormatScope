@@ -28,6 +28,12 @@ rests on now that the numbers exist.
 | D19 | When to flip the repo public | Morning of Sep 19, or Sep 18 evening if clean | — |
 | D20 | QAT for `int4_b32` | In scope, runs with the other five (last in the run order) | pending `quant/qat.py` |
 
+## Additions after the plan
+
+| ID | Decision | Choice | Evidence / status |
+|----|----------|--------|-------------------|
+| A1 | A hardware unit for `int4_b32` | Build it: `rtl/int4_b32/dp32_int4_b32.v`, the MXINT8 unit at 4 bits, no new stage modules. Block scale carried as E8M0 (`formats.py` raw exponent + 127) | Sep 18 (Si Heon): after fine-tuning, `int4_b32` is the most accurate 4-bit configuration (83.21% vs MXFP4 82.79%, INT4 81.36%) but had no silicon point, so the tool could not say whether it or MXFP4 is the better 4-bit choice. Verified like the MX units: 10,000 vectors at both windows plus the corners, reference checked against exact arithmetic, fidelity path bit-exact on synthetic data. **Area and timing pending** `make synth sta FMT=int4_b32`; predicted from the committed stage breakdown at about 6% under MXFP4 (the E2M1 decoders) |
+
 ## Synthesis flow decisions not in the original list
 
 | ID | Decision | Choice | Evidence / status |
