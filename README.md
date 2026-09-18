@@ -51,6 +51,35 @@ Verification: every unit passes 10,000 seeded random vectors plus directed corne
 
 **Spread.** Each unit is also synthesized five times at T1 with ABC's delay target perturbed by −2, −1, 0, +1 and +2% (D8); the table reports the median. INT4, INT8, and MXFP4 return the identical netlist every time — T1 does not bind them — and MXINT8 moves 0.04%. FP8 spans 109,927 to 114,806 µm² (4.4%), larger at tighter targets, so its increment over INT8 is 11% to 16% across the runs. The ranking INT8 < MXINT8 < FP8 holds in every run, though FP8's loosest mapping comes within 0.3% of MXINT8.
 
+## The hardware
+
+One dot-product unit per format, five in all, under `rtl/`. Each takes 32 pairs of codes and a running total, and produces the new running total one clock later. The five share one port list, so the synthesis, timing, and test scripts are the same for every unit:
+
+```verilog
+module dp32_<fmt> #(parameter ALIGN_W = 24) (
+  input  wire         clk, rst_n, en, clear,   // synchronous reset; clear wins over en
+  input  wire [255:0] a_flat, b_flat,          // 32 codes each (128 bits for the 4-bit formats)
+  input  wire [7:0]   scale_a, scale_b,        // E8M0 block scales; MX units only
+  output reg  [31:0]  acc_out,                 // INT32 (INT units) or FP32 format (FP8 and MX)
+  output reg          flag_nan                 // sticky: a NaN code or a 0xFF scale was seen
+);
+```
+
+Every unit is the same shape: a combinational multiply stage, an adder tree, and a normalize-and-accumulate stage feeding a single 32-bit register. The stages are separate named modules (`mul_stage_*`, `tree_stage_*`, `align_stage_*`, `normacc_stage_*`) so the hierarchical synthesis run can charge area to each one; that is where the breakdown figure comes from.
+
+- **INT8 and INT4** (`rtl/int8/`, `rtl/int4/`, `rtl/common/adder_tree.v`): 32 signed products, a balanced five-level tree that grows one sign bit per level (21 bits for INT8, 13 for INT4), and an INT32 accumulator. INT4 is INT8 with `W = 4`; the tree is written once with parameters. Overflow wraps in two's complement (D13). ResNet-8 never reaches it; the test does, by 4,098 accumulations of 32 × (−128)².
+- **FP8-E4M3** (`rtl/fp8e4m3/`, `rtl/common/fused_stage.v`): each lane decodes both codes (`decode_fp8e4m3.v`), multiplies the two 4-bit significands, and adds the exponents. The 32 products and the FP32 accumulator then go through the **fused stage** once: find the maximum exponent, shift every term into a common `ALIGN_W`-bit window with guard, round, and sticky bits, negate the negative ones, sum all 33 in one integer tree, take the magnitude, count leading zeros, normalize, and round **once**, to nearest even, into the FP32 register. Nothing in the datapath is an FP32 adder. A NaN input zeroes that lane and sets `flag_nan` (D3). Every bit width and the range argument for why the register needs no subnormals or infinities are in [`docs/fused-stage.md`](docs/fused-stage.md).
+- **MXINT8 and MXFP4** (`rtl/mxint8/`, `rtl/mxfp4/`): the INT8 multiply and tree stages (or an E2M1 decode and a 4×4 magnitude multiply for MXFP4) produce the exact integer block sum. That sum is normalized to its leading one, given the block exponent `scale_a + scale_b − OFFSET`, and enters the same fused stage as a single term next to the accumulator. A 0xFF scale zeroes the block and sets `flag_nan` (D4). Extreme scales that leave FP32's range saturate to the largest finite value or return +0; real model scales never get near that.
+
+**Verification** (`tb/`, cocotb 2.0 on Icarus Verilog, Verilog-2005). The NumPy reference in `tb/refs.py` was written before the RTL, step for step from the fused-stage document with explicit integer shifts, so any mismatch is a bug in one of them and never a matter of interpretation. `tb/test_refs.py` then checks the reference itself against exact rational arithmetic: when no bit is dropped in alignment the result is the correctly rounded sum, and when bits are dropped the error stays inside the documented bound. On top of that reference:
+
+- the three decoders are tested over every code (256 FP8, 16 E2M1, 256 E8M0);
+- every unit runs 10,000 seeded random vectors with the accumulator checked on **every cycle**, with `en` gaps and `clear` pulses mixed into the stream so the prior total is built by the unit itself, not preloaded (D14);
+- directed corners cover the extremes, alternating signs, element pairing (a one-hot lane must meet its partner at the same index), exact cancellation, subnormal-heavy inputs, terms of very different magnitude, each rounding decision (guard, round, sticky, tie to even, carry out of the significand), NaN lanes and scales, saturation and underflow, and control priority. Each constructed corner first asserts in Python that the reference takes the path the corner is named after, so a corner cannot silently stop testing what its name says;
+- the FP8 and MX units run all of this at both window widths, 24 and 32.
+
+`make test` runs the full suite in about three minutes; CI runs the decoders and a 300-vector subset of each unit on every push (D15). Waveforms are off by default and switched on with `FORMATSCOPE_VCD=1`.
+
 ## Limitations
 
 - Pre-layout, cell-level area and delay: no placement, no routing, no wires. Absolute sky130 numbers do not transfer to other nodes; the ratios between formats are the claim.
