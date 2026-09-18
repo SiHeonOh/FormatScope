@@ -37,7 +37,7 @@ sky130 HD, typical corner, pre-layout. `unc` is each unit's fastest mapping; `T1
 
 "Bits per number" amortizes the 8-bit shared scale of the block-32 formats over the block. `int4_b32` (INT4 elements with a block-32 power-of-two scale) is an accuracy-only configuration with no hardware unit; it separates how much of MXFP4's behaviour comes from block scaling and how much from the E2M1 encoding.
 
-Verification: every unit passes 10,000 seeded random vectors plus directed corners against a NumPy reference (`make test`); every decoder is tested over all of its codes. CI runs the decoders and a 300-vector subset on every push.
+Verification: every unit passes 10,000 seeded random vectors plus directed corners against a NumPy reference (`make test`); every decoder is tested over all of its codes; and one real layer's dot products pushed through the PyTorch path and the hardware reference agree bit-exactly for the INT and MX formats (`results/fidelity.csv`). CI runs the decoders and a 300-vector subset on every push.
 
 ## Findings
 
@@ -57,7 +57,7 @@ Verification: every unit passes 10,000 seeded random vectors plus directed corne
 - ABC's constraint-driven mapping is deterministic here (repeated runs agree to the last digit) and it maps to its own timing model, which reads about 1.5% faster than OpenSTA on the same netlist. Units are therefore mapped 3% inside T1 (`abc_margin` in `synth/targets.toml`) and OpenSTA's number is the one reported.
 - There is no second, tighter clock. The INT units are about three times faster than the fused units at their fastest mapping, so no period tighter than T1 constrains both groups; ABC can trade slack for area but cannot map a unit faster than its delay-optimal result.
 - Activations use one scale per tensor and weights one scale per output channel, calibrated on 512 training images (D10, D11). The per-channel requantization after the accumulator is excluded from every unit alike.
-- Fake quantization accumulates in FP32; the fused FP8 and MX hardware rounds once per 32 products. The fidelity measurement of that difference is not in this repository yet.
+- Fake quantization accumulates in FP32; the fused FP8 and MX hardware rounds once per 32 products. Measured on one real layer (`quant/fidelity.py`, `results/fidelity.csv`): INT4, INT8, MXINT8, and MXFP4 are bit-exact between the two paths; FP8-E4M3 differs by at most 1.1e-7 absolute (6.4e-8 relative) over 300 outputs, so the accuracy table stands for the hardware.
 - Power and energy are out of scope.
 
 ## Decisions and references
