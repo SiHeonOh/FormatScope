@@ -36,7 +36,7 @@ _CSV_PATH = os.path.join(_REPO_ROOT, "results", "fidelity.csv")
 _CSV_COLUMNS = ["format", "layer", "n_outputs", "max_abs_diff", "mean_abs_diff",
                 "max_rel_diff", "layer_output_change", "exact", "date"]
 
-_HW_FORMATS = ("int4", "int8", "fp8e4m3", "mxint8", "mxfp4")
+_HW_FORMATS = ("int4", "int8", "fp8e4m3", "mxint8", "mxfp4", "int4_b32")
 _ALIGN_W = 24
 _LAYER_NAME = "block2.conv1"
 _BATCH_SIZE = 8
@@ -134,12 +134,16 @@ def _quantize_and_run(fmt, patches, w_np, ideal, pairs):
                 sl = slice(blk * formats.BLOCK_SIZE, (blk + 1) * formats.BLOCK_SIZE)
                 acc_bits, _ = refs.dp32_fp8(p_codes[o, sl], w_codes[c, sl], acc_bits, _ALIGN_W)
             path_b[i] = float(refs.fp32_value(acc_bits)) * float(p_scale) * float(w_scale[c, 0])
-    else:  # mxint8, mxfp4
+    else:  # mxint8, mxfp4, int4_b32
+        # formats.py keeps the int4_b32 block scale as a raw exponent; the hardware
+        # takes it as E8M0 (raw + 127), like the MX formats (tb/refs.py).
+        bias = 127 if fmt == "int4_b32" else 0
         for i, (o, c) in enumerate(pairs):
             acc_bits = 0
             for blk in range(n_blocks):
                 acc_bits, _ = refs.dp32_mx(fmt, p_codes[o, blk], w_codes[c, blk],
-                                            p_scale[o, blk], w_scale[c, blk], acc_bits, _ALIGN_W)
+                                            int(p_scale[o, blk]) + bias, int(w_scale[c, blk]) + bias,
+                                            acc_bits, _ALIGN_W)
             path_b[i] = float(refs.fp32_value(acc_bits))
 
     return path_a, path_b, ideal_sampled

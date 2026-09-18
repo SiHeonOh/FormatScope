@@ -35,7 +35,7 @@ synth:
 	$(PYTHON) synth/run_synth.py --lib $(LIB) $(FMT_FLAG) --target $(TARGET) --align-w $(ALIGN_W)
 
 synth-sweep:
-	$(PYTHON) synth/run_synth.py --lib $(LIB) --fmt fp8e4m3 --fmt mxint8 --fmt mxfp4 --target $(TARGET) --align-w 32
+	$(PYTHON) synth/run_synth.py --lib $(LIB) --fmt fp8e4m3 --fmt mxint8 --fmt mxfp4 --fmt int4_b32 --target $(TARGET) --align-w 32
 
 synth-perturb:
 	$(PYTHON) synth/run_synth.py --lib $(LIB) $(FMT_FLAG) --target $(TARGET) --align-w $(ALIGN_W) --perturb

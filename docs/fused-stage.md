@@ -102,6 +102,18 @@ Each MX unit forms an exact integer block sum `S` with the INT tree, then enters
 
 **E8M0 NaN (decision D4).** If either scale is 0xFF, the block term is forced to zero and `flag_nan` sets on that accumulation cycle, with the same sticky and clear rules as FP8.
 
+**INT4-b32 (`rtl/int4_b32/`).** The accuracy table's sixth configuration, INT4 elements with one power-of-two scale per 32-element block, is the MXINT8 unit at 4 bits and adds no new logic: `mul_stage_int` and `tree_stage_int` at `W = 4`, `align_stage_mxnorm`, and the fused stage with `N_PROD = 1`.
+
+| | INT4-b32 |
+|---|---|
+| Element value | `code` (INT4, two's complement, no implicit fraction) |
+| Lane product | 8-bit signed |
+| Block sum `S` | 13-bit signed, `|S| ≤ 32 × (−8)² = 2¹¹`, so 12 magnitude bits (`SIG_W = 12`) |
+| Block value | `S × 2^(scale_a + scale_b − 254)` (two biases, integer elements) |
+| `OFFSET` | 254 |
+
+`quant/formats.py` keeps this format's block scale as a raw signed exponent `e`. The hardware carries it as E8M0, `code = e + 127`, so the port list and the NaN policy are the same as the MX units; `tb/test_refs.py` checks that the two conventions give the same block values. It has the same storage cost as MXFP4 (4.25 bits per number) and differs from it only in the element encoding, which is what makes the pair a controlled comparison: the MXFP4 unit is this unit plus 64 E2M1 decoders.
+
 **MXFP4 products.** The proposal describes the E2M1 product as a table. Each product magnitude is a function of 6 input bits (two 3-bit magnitude codes), so a table and a 4-bit × 4-bit multiply of the decoded magnitudes reduce to the same logic in synthesis. The RTL writes the multiply for readability.
 
 ## Precision notes (reported, not hidden)
