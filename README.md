@@ -19,7 +19,7 @@ make synth sta    # Yosys + ABC on sky130 HD, then OpenSTA -> results/area.csv, 
 make plot         # results/figures/
 ```
 
-The EDA tools are pinned in `versions.lock` (OSS CAD Suite 2026-09-09, OpenSTA 3.1.0, sky130 `1689ac3f`); `scripts/setup_lane_s_wsl.sh` installs them on Ubuntu or WSL2 and `scripts/setup_lane_s_mac.sh` on Apple Silicon, and each ends with the two smoke tests. `synth/libs.toml` names the liberty file per machine. Every number below regenerates from these targets.
+The EDA tools are pinned in `versions.lock` (OSS CAD Suite 2026-09-09, OpenSTA 3.1.0, sky130 `1689ac3f`); `scripts/setup_lane_s_wsl.sh` installs them on Ubuntu or WSL2 and `scripts/setup_lane_s_mac.sh` on Apple Silicon, and each ends with the two smoke tests. On Windows, clone and run everything inside WSL2 Ubuntu, on the Linux filesystem rather than under `/mnt/c`; Icarus, Yosys, and OpenSTA have no native Windows route here, and the test suite assumes POSIX paths. `synth/libs.toml` names the liberty file per machine. Every number below regenerates from these targets.
 
 ## Results
 
@@ -79,6 +79,10 @@ Every unit is the same shape: a combinational multiply stage, an adder tree, and
 - the FP8 and MX units run all of this at both window widths, 24 and 32.
 
 `make test` runs the full suite in about three minutes; CI runs the decoders and a 300-vector subset of each unit on every push (D15). Waveforms are off by default and switched on with `FORMATSCOPE_VCD=1`.
+
+## Related work
+
+The closest prior work is Samson et al., *Exploring FPGA designs for MX and beyond* (FPL 2024): an open-source FPGA library for the MX arithmetic with an accuracy-versus-area Pareto study on ResNet-18. FormatScope asks the same question for standard-cell silicon and adds what that study does not have: INT4, INT8, and FP8 baselines synthesized and timed in the same flow as the MX units, a per-stage area breakdown that says where each format's cost sits, every unit verified bit-exactly against a reference that shares its format definitions with the quantizer, and a command that turns the frontier into a recommendation. The fused stage (an exact integer tree, then one alignment and one rounding) is an established idea, not ours: MXDOTP (ETH Zurich, 2025) and Cuyckens et al. (KU Leuven, 2025) build MX dot products the same way, and we cite them as validation. Chen et al., *INT v.s. FP* (2025), find on LLMs that FP elements hold the accuracy advantage at 4 bits; our `int4_b32` ablation lands the other way on a small CNN with every layer quantized, which we report as a difference in setting. Full citations are in [`docs/references.md`](docs/references.md).
 
 ## Limitations
 
