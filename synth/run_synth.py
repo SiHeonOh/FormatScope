@@ -46,12 +46,12 @@ AREA_COLUMNS = [
 BREAKDOWN_COLUMNS = ["lib", "format", "target", "align_w", "stage", "area_um2", "date"]
 
 UNIT = "dp32"
-FORMATS = ["int4", "int8", "fp8e4m3", "mxint8", "mxfp4"]
+FORMATS = ["int4", "int8", "fp8e4m3", "mxint8", "mxfp4", "int4_b32"]
 LIB_IDS = ["sky130hd", "asap7"]
 TARGETS = ["unc", "t1", "t2"]
 DEFAULT_ALIGN_W = 24
 # Only the fused-stage units have an alignment window (S5.4, decision D6).
-ALIGNED_FORMATS = {"fp8e4m3", "mxint8", "mxfp4"}
+ALIGNED_FORMATS = {"fp8e4m3", "mxint8", "mxfp4", "int4_b32"}
 PERTURB_FACTORS = [0.98, 0.99, 1.00, 1.01, 1.02]  # decision D8
 STAGES = ["decode", "mul", "align", "tree", "normacc", "other"]
 
@@ -71,6 +71,11 @@ SOURCES = {
     "mxfp4": [
         "rtl/common/adder_tree.v", "rtl/common/lzc.v", "rtl/common/fused_stage.v",
         "rtl/common/decode_e2m1.v", "rtl/common/decode_e8m0.v", "rtl/mxfp4/dp32_mxfp4.v",
+    ],
+    # INT4 elements with a block-32 power-of-two scale: the MXINT8 unit at 4 bits.
+    "int4_b32": [
+        "rtl/common/adder_tree.v", "rtl/common/lzc.v", "rtl/common/fused_stage.v",
+        "rtl/common/decode_e8m0.v", "rtl/int4_b32/dp32_int4_b32.v",
     ],
 }
 SMOKE_DESIGNS = {

@@ -53,7 +53,8 @@ TIMING_COLUMNS = [
 UNC_PERIOD_NS = 10.0
 
 NETLIST_RE = re.compile(
-    r"^(?P<lib>sky130hd|asap7)_(?P<format>[a-z0-9]+)_(?P<target>unc|t1|t2)"
+    # A format id may contain an underscore (int4_b32); the target anchors the split.
+    r"^(?P<lib>sky130hd|asap7)_(?P<format>[a-z0-9]+(?:_[a-z0-9]+)*?)_(?P<target>unc|t1|t2)"
     r"_a(?P<align_w>\d+)_r(?P<run>\d+)_netlist\.v$"
 )
 SMOKE_NETLISTS = {

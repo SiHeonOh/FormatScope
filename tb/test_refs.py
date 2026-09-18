@@ -125,13 +125,16 @@ def _check_against_exact(new, exact, info, n_terms, align_w, where):
 def test_mx_block_sums_match_formats():
     """The integer block sums times their scale equal formats.decode products, summed."""
     rng = np.random.default_rng(1)
-    for fmt, w in (("mxint8", 8), ("mxfp4", 4)):
+    for fmt, w in (("mxint8", 8), ("mxfp4", 4), ("int4_b32", 4)):
+        # formats.py holds the int4_b32 block scale as a raw exponent; the hardware
+        # reference takes it as E8M0 (raw + 127), like the MX formats.
+        bias = 127 if fmt == "int4_b32" else 0
         for _ in range(200):
             a, b = rng.integers(0, 1 << w, size=(2, 32))
             sa, sb = (int(s) for s in rng.integers(100, 155, size=2))
             ours = refs.mx_block_value(fmt, a, b, sa, sb)
-            va = formats.decode(fmt, a, np.array(sa))
-            vb = formats.decode(fmt, b, np.array(sb))
+            va = formats.decode(fmt, a, np.array(sa - bias))
+            vb = formats.decode(fmt, b, np.array(sb - bias))
             theirs = sum((Fraction(float(x)) * Fraction(float(y)) for x, y in zip(va.ravel(), vb.ravel())),
                          Fraction(0))
             assert ours == theirs, f"{fmt}: {ours} vs {theirs}"
@@ -142,6 +145,8 @@ def test_mx_extreme_block_sums():
     assert refs.mx_block_sum("mxint8", [0x80] * 32, [0x7F] * 32) == -128 * 127 * 32
     assert refs.mx_block_sum("mxfp4", [0x7] * 32, [0x7] * 32) == 144 * 32
     assert refs.mx_block_sum("mxfp4", [0xF] * 32, [0x7] * 32) == -144 * 32
+    assert refs.mx_block_sum("int4_b32", [0x8] * 32, [0x8] * 32) == 1 << 11
+    assert refs.mx_block_sum("int4_b32", [0x8] * 32, [0x7] * 32) == -8 * 7 * 32
 
 
 def test_mx_nan_scale_contributes_zero():
@@ -149,7 +154,7 @@ def test_mx_nan_scale_contributes_zero():
     assert (bits, nan) == (0x3F800000, True)
 
 
-@pytest.mark.parametrize("fmt", ["mxint8", "mxfp4"])
+@pytest.mark.parametrize("fmt", ["mxint8", "mxfp4", "int4_b32"])
 @pytest.mark.parametrize("align_w", [24, 32])
 def test_mx_against_exact_arithmetic(fmt, align_w):
     rng = np.random.default_rng(0)

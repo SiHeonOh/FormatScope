@@ -70,6 +70,10 @@ def test_netlist_name_parsing():
     meta = rsta.parse_netlist_name("synth/out/sky130hd_fp8e4m3_t2_a32_r3_netlist.v")
     assert meta == {"lib": "sky130hd", "format": "fp8e4m3", "target": "t2",
                     "align_w": 32, "run": 3}
+    # A format id with an underscore must not be split at it.
+    meta = rsta.parse_netlist_name("synth/out/sky130hd_int4_b32_t1_a24_r0_netlist.v")
+    assert meta == {"lib": "sky130hd", "format": "int4_b32", "target": "t1",
+                    "align_w": 24, "run": 0}
     for bad in ("smoke_add_netlist.v", "sky130hd_int8_t3_a24_r0_netlist.v",
                 "sky130hd_int8_unc_a24_r0_stat.json"):
         with pytest.raises(ValueError):
