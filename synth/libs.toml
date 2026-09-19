@@ -1,3 +1,5 @@
+# Machine sections are matched on $FORMATSCOPE_MACHINE, else the hostname;
+# macOS reports it with and without the .local suffix depending on the shell.
 # Absolute liberty paths per machine (build-plan.md S3.3). Every script reads
 # its library from here; nothing hard-codes a path. The section name is the
 # machine name: $FORMATSCOPE_MACHINE if set, else the hostname.
@@ -11,4 +13,7 @@ sky130hd = "$HOME/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt
 # asap7 = "$HOME/tools/asap7/asap7sc7p5t_RVT_TT_merged.lib"
 
 [rias-MacBook-Air]
+sky130hd = "$HOME/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"
+
+[rias-MacBook-Air.local]
 sky130hd = "$HOME/.ciel/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib"

@@ -62,7 +62,7 @@ recommendation. Let the Yosys output scroll; do not cut away from it — the poi
 formatscope recommend --area-budget 40000 --stage qat
 ```
 
-> Under forty thousand square microns, the answer is MXFP4, after a five-epoch fine-tune.
+> Under forty thousand square microns, the answer is INT4 with a block scale, after a five-epoch fine-tune: 83 percent accuracy for a third of INT8's area.
 
 ---
 
@@ -138,10 +138,10 @@ to `breakdown.png`.
 - [ ] Final cut between 3:00 and 5:00
 - [ ] Uploaded, link opened in a private window, and pasted into the submission form
 
-## If INT4-b32 is measured before recording
+## INT4-b32 (measured Sep 19, already in the numbers above)
 
-It currently has a verified unit but no area or timing row. If `make synth sta FMT=int4_b32` lands
-before the recording, add one sentence to the H2 shot (word budget allows it):
+All six units are now synthesized and timed. The H2 shot has room for one more sentence:
 
-> INT4 elements with the same block-32 scale reach 83.2 percent for [AREA] square microns, which
-> says the block scale is what buys the accuracy, not the floating-point element encoding.
+> INT4 elements with the same block-32 scale reach 83.2 percent for thirty-six thousand square
+> microns — the same area as MXFP4, slightly better accuracy — so the block scale is what buys the
+> accuracy, not the floating-point element encoding.

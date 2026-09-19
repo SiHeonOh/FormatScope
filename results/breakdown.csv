@@ -25,3 +25,9 @@ sky130hd,mxfp4,unc,24,align,5925.6832,2026-09-17
 sky130hd,mxfp4,unc,24,tree,9711.8144,2026-09-17
 sky130hd,mxfp4,unc,24,normacc,3414.5248,2026-09-17
 sky130hd,mxfp4,unc,24,other,1241.1904,2026-09-17
+sky130hd,int4_b32,unc,24,decode,32.5312,2026-09-19
+sky130hd,int4_b32,unc,24,mul,16383.2128,2026-09-19
+sky130hd,int4_b32,unc,24,align,6009.5136,2026-09-19
+sky130hd,int4_b32,unc,24,tree,9089.9680,2026-09-19
+sky130hd,int4_b32,unc,24,normacc,3525.8816,2026-09-19
+sky130hd,int4_b32,unc,24,other,1241.1904,2026-09-19
