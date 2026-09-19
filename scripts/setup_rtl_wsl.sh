@@ -49,8 +49,6 @@ if [ -d "$REPO/.git" ]; then
 else
   git clone "$REPO_URL" "$REPO"
 fi
-# Local-only ignore for assistant settings; never committed.
-grep -qxF ".claude/" "$REPO/.git/info/exclude" 2>/dev/null || echo ".claude/" >> "$REPO/.git/info/exclude"
 
 step "OSS CAD Suite $SUITE_DATE"
 mkdir -p "$TOOLS"
