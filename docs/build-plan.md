@@ -12,7 +12,7 @@ This is the single to-do list for the whole project. Read Sections 0–2 once (w
 
 Rules the whole team agreed on:
 
-1. **The submitted proposal governs.** `docs/reference/FormatScope_Proposal_Final.pdf` is the spec the judges read. The playbook (`docs/reference/fablemax.pdf`) is a verified tool-command reference only; where they disagree, the proposal wins.
+1. **The submitted proposal governs.** The submitted proposal PDF is the spec the judges read. The playbook PDF is a verified tool-command reference only; where they disagree, the proposal wins. Both are internal documents and are kept outside this repository.
 2. **No RTL merges to `main` without its cocotb test green.** No exceptions, including the last night.
 3. **Results are committed, code is reproducible.** Every number in the README regenerates from `make` targets. CSVs in `results/` are committed; netlists, checkpoints, and simulator builds are not.
 4. **Owners commit their own lane.** Claude writes first drafts on a branch; the owner reads every line, runs it, and commits under their own name. Commit messages are plain imperative sentences with no AI attribution of any kind.
@@ -110,7 +110,6 @@ FormatScope/
 │   ├── build-plan.md         # this document
 │   ├── decisions.md          # decision log D1…Dn with the date and who decided
 │   ├── fused-stage.md        # bit-width derivation for the FP8/MX fused stage (§5.4)
-│   ├── reference/            # proposal PDFs, flyer, playbook
 │   └── references.md         # OCP FP8, OCP MX v1.0, arXiv 2303.17951, 2209.05433, 2310.10537, 2303.02347
 ├── models/
 │   ├── resnet8.py            # the network (decision D9)
