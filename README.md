@@ -6,7 +6,7 @@ Choosing a number format for an AI accelerator trades model accuracy against sil
 
 ![Accuracy versus DP32 area at the shared clock T1](results/figures/frontier_sky130hd_t1.png)
 
-*Top-1 accuracy after post-training quantization against DP32 cell area with every unit meeting the same 36.6 ns clock. The step line is the Pareto front. Filled markers are PTQ; hollow markers will be the 5-epoch fine-tune when it lands.*
+*Top-1 accuracy against DP32 cell area with every unit meeting the same 36.6 ns clock. The step line is the Pareto front through the PTQ points. Filled markers are post-training quantization; hollow markers are the same unit after the 5-epoch fine-tune.*
 
 ## Reproduce in six commands
 
