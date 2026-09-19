@@ -45,15 +45,43 @@ def _title(points, target):
     return f"{title} ({dtarget:.0f} ps)" if dtarget and target != "unc" else title
 
 
+def _label_offset(p, others, stage):
+    """Put the label where no other marker sits: right, else above, else below.
+
+    The formats cluster (INT8, MXINT8, and FP8 are within 13% of each other in
+    area), so a fixed offset to the right buries one label under the next
+    marker. Distances are normalized by the spread of the plotted points.
+    """
+    xs = [q.area for q in others] or [p.area]
+    ys = [q.top1(stage) for q in others] or [p.top1(stage)]
+    x_span = (max(xs) - min(xs)) or 1.0
+    y_span = (max(ys) - min(ys)) or 1.0
+
+    def occupied(dx_lo, dx_hi, dy_lo, dy_hi):
+        return any(dx_lo <= (q.area - p.area) / x_span <= dx_hi
+                   and dy_lo <= (q.top1(stage) - p.top1(stage)) / y_span <= dy_hi
+                   for q in others if q is not p)
+
+    if not occupied(0.0, 0.30, -0.06, 0.06):
+        return (8, -4), "left"
+    if not occupied(-0.15, 0.15, 0.0, 0.12):
+        return (0, 12), "center"
+    # Below, staggered by rank in area so two crowded neighbours do not collide.
+    rank = sorted(others, key=lambda q: q.area).index(p)
+    return (0, -20 - 16 * (rank % 2)), "center"
+
+
 def draw_frontier(ax, points, target, logx=False):
     for stage, filled in (("ptq", True), ("qat", False)):
-        for p in measured(points, stage):
+        shown = measured(points, stage)
+        for p in shown:
             color = COLORS[p.format]
             ax.scatter(p.area, p.top1(stage), s=90, zorder=3,
                        color=color if filled else "white", edgecolors=color, linewidths=2)
             if filled:
-                ax.annotate(LABELS[p.format], (p.area, p.top1(stage)), xytext=(8, -4),
-                            textcoords="offset points", fontsize=12, color=color)
+                offset, ha = _label_offset(p, shown, stage)
+                ax.annotate(LABELS[p.format], (p.area, p.top1(stage)), xytext=offset,
+                            textcoords="offset points", fontsize=12, color=color, ha=ha)
                 lo, hi = p.area_spread
                 if hi > lo:
                     ax.hlines(p.top1(stage), lo, hi, color=color, linewidth=1, zorder=2)
@@ -68,6 +96,8 @@ def draw_frontier(ax, points, target, logx=False):
     ax.set_title(_title(points, target))
     ax.set_xlabel("DP32 area (µm²)")
     ax.set_ylabel("top-1 (%)")
+    # Labels sit to the right of their marker, so the rightmost one needs room.
+    ax.margins(x=0.18)
 
 
 def frontier_figures(rdir, out_dir, lib="sky130hd", align_w=24, logx=False, targets=TARGETS):
@@ -78,7 +108,8 @@ def frontier_figures(rdir, out_dir, lib="sky130hd", align_w=24, logx=False, targ
             continue
         fig, ax = plt.subplots(figsize=(7, 5))
         draw_frontier(ax, points, target, logx)
-        ax.legend(frameon=False, fontsize=12, loc="lower right")
+        # Data clusters bottom-left and top-right; mid-left stays clear.
+        ax.legend(frameon=False, fontsize=12, loc="center left")
         written += _save(fig, out_dir, f"frontier_{lib}_{target}")
 
     present = [t for t, pts in by_target.items() if measured(pts)]
@@ -86,7 +117,7 @@ def frontier_figures(rdir, out_dir, lib="sky130hd", align_w=24, logx=False, targ
         fig, axes = plt.subplots(1, len(present), figsize=(6 * len(present), 5), sharey=True)
         for ax, target in zip(axes, present):
             draw_frontier(ax, by_target[target], target, logx)
-        axes[0].legend(frameon=False, fontsize=12, loc="lower right")
+        axes[0].legend(frameon=False, fontsize=12, loc="center left")
         written += _save(fig, out_dir, f"frontier_{lib}_panel")
     return written
 
