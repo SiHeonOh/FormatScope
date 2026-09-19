@@ -1,0 +1,74 @@
+
+9. Printing statistics.
+
+=== dp32_int8 ===
+
+        +----------Local Count, excluding submodules.
+        |        +-Local Area, excluding submodules.
+        |        | 
+    12336        - wires
+    13432        - wire bits
+       13        - public wires
+     1109        - public wire bits
+       10        - ports
+      565        - port bits
+    12359 9.88E+04 cells
+        4        -   $scopeinfo
+        1    8.758   sky130_fd_sc_hd__a211o_1
+       23  172.666   sky130_fd_sc_hd__a211oi_1
+       18   135.13   sky130_fd_sc_hd__a21boi_0
+       15  112.608   sky130_fd_sc_hd__a21o_1
+      493 2.47E+03   sky130_fd_sc_hd__a21oi_1
+       64  560.538   sky130_fd_sc_hd__a22o_1
+      184 1.38E+03   sky130_fd_sc_hd__a22oi_1
+        1    8.758   sky130_fd_sc_hd__a311oi_1
+       32  280.269   sky130_fd_sc_hd__a31o_2
+       90   563.04   sky130_fd_sc_hd__a31oi_1
+       28  280.269   sky130_fd_sc_hd__a32o_1
+       94  588.064   sky130_fd_sc_hd__and3_1
+       17  148.893   sky130_fd_sc_hd__and3b_1
+      103  902.115   sky130_fd_sc_hd__and4_1
+        1    3.754   sky130_fd_sc_hd__buf_1
+      453  1.7E+03   sky130_fd_sc_hd__clkbuf_1
+       32  640.614   sky130_fd_sc_hd__dfxtp_1
+      250    938.4   sky130_fd_sc_hd__inv_1
+      103  386.621   sky130_fd_sc_hd__lpflow_clkbufkapwr_1
+        3   11.261   sky130_fd_sc_hd__lpflow_clkinvkapwr_1
+      224  1.4E+03   sky130_fd_sc_hd__lpflow_inputiso0n_1
+      304  1.9E+03   sky130_fd_sc_hd__lpflow_isobufsrc_1
+     1419 1.42E+04   sky130_fd_sc_hd__maj3_1
+       32  320.307   sky130_fd_sc_hd__mux2i_1
+     1602 6.01E+03   sky130_fd_sc_hd__nand2_1
+      362 2.26E+03   sky130_fd_sc_hd__nand2b_1
+      127   635.61   sky130_fd_sc_hd__nand3_1
+       32   240.23   sky130_fd_sc_hd__nand3b_1
+      224  1.4E+03   sky130_fd_sc_hd__nand4_1
+      826  3.1E+03   sky130_fd_sc_hd__nor2_1
+       52  325.312   sky130_fd_sc_hd__nor2b_1
+      141  705.677   sky130_fd_sc_hd__nor3_1
+        3   30.029   sky130_fd_sc_hd__o211a_1
+       33  247.738   sky130_fd_sc_hd__o211ai_1
+       38  285.274   sky130_fd_sc_hd__o21a_1
+      495 2.48E+03   sky130_fd_sc_hd__o21ai_0
+       32  160.154   sky130_fd_sc_hd__o21ai_1
+       93   698.17   sky130_fd_sc_hd__o21bai_1
+        2   22.522   sky130_fd_sc_hd__o221a_2
+        4   35.034   sky130_fd_sc_hd__o22a_1
+        1    6.256   sky130_fd_sc_hd__o22ai_1
+        1    8.758   sky130_fd_sc_hd__o2bb2ai_1
+        1    10.01   sky130_fd_sc_hd__o311a_1
+        2   17.517   sky130_fd_sc_hd__o311ai_0
+        1    8.758   sky130_fd_sc_hd__o31a_1
+        1    7.507   sky130_fd_sc_hd__o31ai_1
+       35   218.96   sky130_fd_sc_hd__or2_2
+       40   250.24   sky130_fd_sc_hd__or3_1
+     2108 1.85E+04   sky130_fd_sc_hd__xnor2_1
+      570 1.28E+04   sky130_fd_sc_hd__xnor3_1
+     1166 1.02E+04   sky130_fd_sc_hd__xor2_1
+      379 9.01E+03   sky130_fd_sc_hd__xor3_1
+
+   Area for cell type $scopeinfo is unknown!
+
+   Chip area for module '\dp32_int8': 98811.017600
+     of which used for sequential elements: 640.614400 (0.65%)
+

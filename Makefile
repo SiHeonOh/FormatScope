@@ -59,10 +59,14 @@ demo:
 # Copy the final netlists and reports out of the gitignored working dirs for commit (S9.4).
 freeze:
 	mkdir -p results/netlists results/reports
-	cp synth/out/sky130hd_*_netlist.v results/netlists/
+	# Netlists for the reported run (r0) of each unit x target x window; the
+	# perturbation runs (r1..r4) differ only in ABC's delay target and are
+	# summarized by the spread in area.csv, so their reports are frozen but
+	# their netlists are not.
+	cp synth/out/sky130hd_*_r0_netlist.v results/netlists/
 	cp synth/out/sky130hd_*_stat.txt results/reports/
 	cp sta/out/sky130hd_*_sta.txt results/reports/
-	-cp synth/out/asap7_*_netlist.v results/netlists/
+	-cp synth/out/asap7_*_r0_netlist.v results/netlists/
 	-cp synth/out/asap7_*_stat.txt sta/out/asap7_*_sta.txt results/reports/
 
 clean-eda:
