@@ -53,6 +53,28 @@ def test_e2m1_roundtrip_is_nearest():
     _assert_globally_nearest("e2m1", RNG.uniform(-10, 10, size=100_000))
 
 
+def test_e2m1_ties_round_away_from_zero():
+    """Pins the tie rule of the threshold cascade in `_e2m1_value_to_code`.
+
+    E2M1's magnitudes are unevenly spaced, so its midpoints are exactly
+    representable and ties are reachable: 0.25, 0.75, 1.25, 1.75, 2.5, 3.5, 5.
+    The cascade compares `mag >= threshold`, so each one rounds away from zero.
+
+    This is a deviation from the round-to-nearest-even the plan states for every
+    format (S1.4), and it is the one place the encoder differs from it. It does
+    not reach the hardware: the RTL only decodes E2M1, and decoding is exact.
+    Ties are unreachable from unquantized float data in practice, but the rule
+    should be a decision on the record rather than a side effect, so this test
+    fails loudly if it changes again.
+    """
+    encode_fn, decode_fn, _ = formats._ELEMENT_CODECS["e2m1"]
+    midpoints = (formats._E2M1_MAGNITUDES[:-1] + formats._E2M1_MAGNITUDES[1:]) / 2.0
+    for mid, higher in zip(midpoints, formats._E2M1_MAGNITUDES[1:]):
+        for sign in (1.0, -1.0):
+            decoded = decode_fn(encode_fn(np.array([sign * mid])))
+            assert decoded[0] == pytest.approx(sign * higher), f"tie at {sign * mid}"
+
+
 # ---------------------------------------------------------------------------
 # (ii) every table value matches an independent (scalar, non-vectorized)
 # reimplementation of the format's formula.
