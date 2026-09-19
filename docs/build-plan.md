@@ -2,7 +2,7 @@
 
 **Purdue Chips & AI Hackathon, build window Sep 7–19, 2026. This plan started Thu Sep 10, was re-planned on Tue Sep 15 (Section 10), and ends with the video submitted on Sat Sep 19.**
 
-Team Hidden Bit: Si Heon Oh (RTL + cocotb), Seungmin Nam (quantization + training), Rakshita Gupta (synthesis, OpenSTA, the `formatscope` tool, and the GPU machines). Claude drafts code in all three lanes; the lane owner reviews, runs, and commits it.
+Team Hidden Bit: Si Heon Oh (RTL + cocotb), Seungmin Nam (quantization + training), Rakshita Gupta (synthesis, OpenSTA, the `formatscope` tool, and the GPU machines). Built using Claude as an assistant; the lane owner reviews, runs, and commits everything in their lane.
 
 ---
 
@@ -15,7 +15,7 @@ Rules the whole team agreed on:
 1. **The submitted proposal governs.** The submitted proposal PDF is the spec the judges read. The playbook PDF is a verified tool-command reference only; where they disagree, the proposal wins. Both are internal documents and are kept outside this repository.
 2. **No RTL merges to `main` without its cocotb test green.** No exceptions, including the last night.
 3. **Results are committed, code is reproducible.** Every number in the README regenerates from `make` targets. CSVs in `results/` are committed; netlists, checkpoints, and simulator builds are not.
-4. **Owners commit their own lane.** Claude writes first drafts on a branch; the owner reads every line, runs it, and commits under their own name. Commit messages are plain imperative sentences with no AI attribution of any kind.
+4. **Owners commit their own lane.** First drafts land on a branch; the owner reads every line, runs it, and commits under their own name. Commit messages are plain imperative sentences with no AI attribution of any kind.
 5. **The deliverable is the full proposal scope.** Five verified DP32 units with sky130 netlists and area/timing reports at three delay targets and two alignment-window settings; six quantized configurations each measured after PTQ and after QAT; the stage breakdown; the fidelity check; the ASAP7 rerun for H3; the tool, the plots, and the video. The floor is a contingency, not a target: if the schedule slips we cut in the proposal's own order (ASAP7 rerun first, then the third delay target, then the fine-tuning pass on the MX formats), and we never fall below INT4, INT8, and FP8 verified end to end at two matched delay targets with PTQ accuracy for all five formats.
 6. **Daily 15-minute sync** at a fixed time. Each owner says: done yesterday, doing today, blocked on. Rakshita's hours are limited, so her lane is drafted to be run, not written, by her.
 
@@ -284,13 +284,13 @@ Look for `Chip area for module '\smoke_add': <positive float>`. Zero or a vanish
 
 **(d) OpenSTA on the adder netlist** — Rakshita. `read_liberty`, `read_verilog synth/out/smoke_add_netlist.v`, `link_design smoke_add`, `create_clock -name clk -period 10 [get_ports clk]` (add a clock port to the smoke design or use a virtual clock), `report_checks`. Look for a MET/VIOLATED path.
 
-### 3.8 CI (Rakshita, drafted by Claude; 30 minutes on Day 0 or Day 1)
+### 3.8 CI (Rakshita; 30 minutes on Day 0 or Day 1)
 
 `.github/workflows/ci.yml` on `ubuntu-latest`: `apt-get install iverilog`, `pip install -e . cocotb pytest numpy`, then `pytest tb -q -m "not slow"`. The exhaustive decoder tests and a 300-vector DP32 subset run on every PR in a few minutes; the full 10,000-vector runs are local (`make test`). Synthesis is not run in CI (decision D15). The README shows the green badge.
 
 ---
 
-## 4. Lane M — Quantization and training (owner Seungmin; runs launched by Rakshita; Claude drafts)
+## 4. Lane M — Quantization and training (owner Seungmin; runs launched by Rakshita)
 
 Order matters: `formats.py` first, because the RTL lane needs its decode tables on Day 1.
 
@@ -364,7 +364,7 @@ Expected PTQ top-1 relative to FP32 (sanity bounds, not targets):
 
 ---
 
-## 5. Lane R — RTL (owner Si Heon; Claude drafts; Si Heon reviews, simulates, commits)
+## 5. Lane R — RTL (owner Si Heon; reviews, simulates, commits)
 
 Implementation order: INT8 → INT4 → fused stage + FP8 → MXINT8 → MXFP4. The fused stage is the single hardest piece of the project; its NumPy reference (§6.2) is written *before* its RTL, and the RTL is checked against that reference, not against intuition.
 
@@ -451,7 +451,7 @@ Tag `rtl-v1` on `main` when all five units are green; Rakshita re-runs every syn
 
 ---
 
-## 6. Lane V — Verification harness (owner Si Heon with Claude; runs in CI)
+## 6. Lane V — Verification harness (owner Si Heon; runs in CI)
 
 ### 6.1 Runner pattern (cocotb 2.0, Icarus, pytest)
 
@@ -497,7 +497,7 @@ For each decoder, loop over every code (256 or 16), drive it, read the RTL's `(s
 
 ---
 
-## 7. Lane S — Synthesis, timing, and the stage breakdown (owner Rakshita; Claude drafts everything so Rakshita's time goes to running and reading results)
+## 7. Lane S — Synthesis, timing, and the stage breakdown (owner Rakshita; drafted so Rakshita's time goes to running and reading results)
 
 ### 7.1 Flat synthesis for area (`synth/synth_flat.ys.template`)
 
@@ -563,7 +563,7 @@ In scope, scheduled, and the first thing the proposal names to cut only if the s
 
 ---
 
-## 8. Lane T — The `formatscope` tool (owner Rakshita; Claude drafts; Rakshita reviews and runs)
+## 8. Lane T — The `formatscope` tool (owner Rakshita; reviews and runs)
 
 ### 8.1 Commands
 
@@ -644,7 +644,7 @@ Prepared answers for: why a fused stage with a single rounding; why an FP32-form
 
 ## 10. Day-by-day calendar (revised Tue Sep 15 → Sat Sep 19)
 
-SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude (drafts; never commits). Gates are checked at the next morning's sync. The original Sep 10 calendar is in git history (`500636f`); "Day N" references in the lane sections point at that calendar, and this table supersedes them.
+SH = Si Heon, SN = Seungmin, RG = Rakshita, CL = Claude, the assistant (drafts; never commits). Gates are checked at the next morning's sync. The original Sep 10 calendar is in git history (`500636f`); "Day N" references in the lane sections point at that calendar, and this table supersedes them.
 
 ### 10.1 Where we are (Tue Sep 15, evening)
 
