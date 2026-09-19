@@ -1,0 +1,30 @@
+# Shared delay targets (build-plan.md S7.2, decision D7).
+# T1 = the slowest unconstrained unit's arrival time plus its setup requirement
+# (period_ps - wns_ps from its unconstrained timing.csv row), with a 3% guard
+# band, rounded up to the next 100 ps. The guard band covers the ~1.5% gap
+# between ABC's internal timing and OpenSTA, which otherwise leaves the slowest
+# units a few hundred ps short of the target they were mapped to. Set once,
+# then never change without re-running every synthesis. Picoseconds.
+#
+# There is no T2. The INT units are ~3x faster than the fused FP8/MX units at
+# their fastest mapping, so no period tighter than T1 constrains both groups:
+# ABC can trade slack for area but cannot make a unit faster than its
+# delay-optimal mapping. Each unit is therefore reported at its own fastest
+# mapping (unc) and at the shared clock T1 (proposal cut order, step 2).
+
+#
+# abc_margin: ABC maps to its own timing model, which reads ~1.3% faster than
+# OpenSTA on the same netlist, so a unit mapped exactly to T1 lands just over
+# it. ABC is therefore given T1 / (1 + abc_margin) as its -D value (recorded in
+# area.csv as dtarget_ps) while T1 itself stays the reported clock.
+
+[sky130hd]
+# Slowest unconstrained unit: fp8e4m3 at ALIGN_W 32, arrival 35384 ps, WNS
+# -25470 ps at a 10 ns period (OpenSTA 3.1.0, 2026-09-17):
+# 1.03 x (10000 + 25470) = 36534 -> 36600.
+t1_ps = 36600
+abc_margin = 0.03
+
+[asap7]
+# t1_ps = 0
+# t2_ps = 0

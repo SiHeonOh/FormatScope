@@ -1,0 +1,7 @@
+format,layer,n_outputs,max_abs_diff,mean_abs_diff,max_rel_diff,layer_output_change,exact,date
+int4,block2.conv1,300,8.8817842e-16,8.3745417e-17,5.7199025e-05,0.2215062,True,2026-09-18
+int8,block2.conv1,300,8.8817842e-16,1.2611151e-16,1.3586695e-14,0.010603965,True,2026-09-18
+fp8e4m3,block2.conv1,300,1.0604915e-07,8.7511683e-10,6.4391231e-08,0.022231487,False,2026-09-18
+mxint8,block2.conv1,300,0,0,0,0.0065673782,True,2026-09-18
+mxfp4,block2.conv1,300,0,0,0,0.11483733,True,2026-09-18
+int4_b32,block2.conv1,300,0,0,0,0.11201109,True,2026-09-18

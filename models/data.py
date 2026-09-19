@@ -31,12 +31,17 @@ def get_loaders(batch_size=128, data_dir=None, seed=0):
     train_dataset = datasets.CIFAR10(root=data_dir, train=True, download=True, transform=train_transform)
     test_dataset = datasets.CIFAR10(root=data_dir, train=False, download=True, transform=test_transform)
 
+    # FORMATSCOPE_WORKERS=n feeds the GPU from n processes; 0 (the default)
+    # keeps the single-threaded loader the committed numbers were made with.
+    workers = int(os.environ.get("FORMATSCOPE_WORKERS", 0))
     g = torch.Generator().manual_seed(seed)
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, generator=g
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers,
+        generator=g, persistent_workers=workers > 0,
     )
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False, num_workers=0
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=workers,
+        persistent_workers=workers > 0,
     )
     return train_loader, test_loader
 
