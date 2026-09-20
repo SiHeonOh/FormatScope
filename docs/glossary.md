@@ -151,7 +151,7 @@ Our model. A **ResNet** is a stack of **residual blocks**; each block computes t
 - **Seed**: the starting value for every random choice; fixing it at 0 makes a run reproducible.
 
 ### Ablation
-An experiment that removes one ingredient to see what it was contributing. MXFP4 differs from plain INT4 in two ways at once: block scaling and the E2M1 encoding. The accuracy-only configuration `int4_b32` (INT4 elements with a block-32 scale) has only the first ingredient, so comparing INT4 vs INT4-b32 vs MXFP4 says how much each ingredient is worth.
+An experiment that removes one ingredient to see what it was contributing. MXFP4 differs from plain INT4 in two ways at once: block scaling and the E2M1 encoding. The configuration `int4_b32` (INT4 elements with a block-32 scale) has only the first ingredient, so comparing INT4 vs INT4-b32 vs MXFP4 says how much each ingredient is worth.
 
 ### Numerical fidelity (the PyTorch-vs-hardware cross-check)
 PyTorch fake quantization adds up dequantized products in FP32, rounding after every add. The FP8 and MX hardware adds 32 products exactly and rounds once per block. Those two procedures give slightly different answers, so the accuracy numbers measured in PyTorch are not *exactly* what the hardware would produce. Rather than assume the gap is negligible, the plan pushes one real layer's dot products through both procedures and reports the measured difference. For INT4 and INT8 the two are exactly equal, because integer sums of this size are exact in FP32.
